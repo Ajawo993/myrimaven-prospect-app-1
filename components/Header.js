@@ -44,7 +44,11 @@ export default function Header() {
                 <span className="who-email" title={user.email || ""}>{user.email || "Signed in"}</span>
                 <button className="btn ghost small" onClick={onSignOut}>Sign out</button>
               </div>
-            ) : null}
+            ) : (
+              <div className="who">
+                <Link className="btn ghost small" href="/login">Sign in</Link>
+              </div>
+            )}
           </>
         ) : null}
       </div>
