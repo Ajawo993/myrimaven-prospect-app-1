@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigProblem } from "@/lib/supabase";
 
 /* Only send people back to a page inside this app */
 function nextPath() {
@@ -24,7 +24,10 @@ function friendly(error) {
   if (m.includes("password") && m.includes("character")) return "Use a password with at least 8 characters.";
   if (m.includes("provider is not enabled") || m.includes("unsupported provider")) return "Google sign-in isn't turned on in Supabase yet.";
   if (m.includes("signups not allowed") || m.includes("signup is disabled")) return "New accounts are turned off for this app.";
-  if (m.includes("failed to fetch") || m.includes("network")) return "Couldn't reach the sign-in service. Check your connection and try again.";
+  if (m.includes("failed to fetch") || m.includes("network") || m.includes("load failed")) return "Couldn't reach Supabase. Check that NEXT_PUBLIC_SUPABASE_URL in Vercel is your Project URL, then redeploy.";
+  if (m.includes("did not match the expected pattern") || m.includes("invalid header") || m.includes("invalid api key")) {
+    return "Supabase rejected the app's settings. In Vercel, re-enter NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY with no spaces or quotes, then redeploy.";
+  }
   return (error && error.message) || "Something went wrong. Try again.";
 }
 
@@ -117,7 +120,13 @@ export default function LoginView() {
       <section className="panel auth-card" aria-labelledby="auth-title">
         <h2 id="auth-title">{TITLES[mode]}</h2>
 
-        {!configured ? (
+        {!configured && supabaseConfigProblem ? (
+          <div className="auth-msg err" role="alert">
+            Sign-in is set up incorrectly in Vercel: {supabaseConfigProblem} Fix it under Settings → Environment Variables, then redeploy.
+          </div>
+        ) : null}
+
+        {!configured && !supabaseConfigProblem ? (
           <div className="auth-msg warn">
             Sign-in isn&apos;t connected yet. It turns on once Supabase is set up for this app.{" "}
             <Link href="/discover">Continue without signing in</Link>
