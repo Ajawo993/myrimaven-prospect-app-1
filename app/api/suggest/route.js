@@ -1,9 +1,14 @@
 /* POST /api/suggest  {query, region?}  ->  up to 6 suggested organizations,
    with live job-posting counts when Adzuna is set up */
 import { suggest, parseJSON, normSuggest } from "@/lib/prompts";
-import { askClaude, jobPostings, readJson, errorResponse } from "@/lib/server";
+import { askClaude, jobPostings, requireUser, readJson, errorResponse } from "@/lib/server";
 
 export async function POST(request) {
+  try {
+    await requireUser(request);
+  } catch (e) {
+    return errorResponse(e);
+  }
   const b = await readJson(request);
   try {
     const text = await askClaude(suggest(b.query, b.region), 2000);

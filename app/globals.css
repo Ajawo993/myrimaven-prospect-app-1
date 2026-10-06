@@ -71,7 +71,7 @@ main{max-width:1200px; margin:0 auto; padding-inline:16px; padding-block:28px 64
 .btn.danger{color:var(--bad)}
 .btn[disabled]{opacity:.55; cursor:not-allowed}
 label.f{display:flex; flex-direction:column; gap:4px; font-size:.82rem; font-weight:500; color:var(--muted); min-width:0}
-input[type=text],input[type=search],input[type=date],input[type=email],select,textarea{width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; color:var(--ink); font-size:.95rem}
+input[type=text],input[type=search],input[type=date],input[type=email],input[type=password],select,textarea{width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; color:var(--ink); font-size:.95rem}
 textarea{resize:vertical; min-height:70px}
 input:focus,select:focus,textarea:focus{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px var(--accent-soft)}
 .row{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end}
@@ -266,3 +266,25 @@ td.n{font-family:var(--f-mono); text-align:right} th.n{text-align:right}
   .prow .c-fit{grid-column:1 / -1}
 }
 @media (max-width:560px){ .mini-crit{grid-template-columns:minmax(0,1fr)} }
+
+/* sign-in */
+.auth-wrap{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,420px); gap:48px; align-items:center; padding-block:24px}
+.auth-intro{display:flex; flex-direction:column; gap:14px}
+.auth-intro .lede{color:var(--muted); max-width:52ch}
+.auth-intro .steps{grid-template-columns:minmax(0,1fr); max-width:340px}
+.auth-card{gap:16px; box-shadow:var(--shadow)}
+.btn.block{width:100%; padding-block:10px}
+.divider{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:.8rem}
+.divider::before,.divider::after{content:""; flex:1; height:1px; background:var(--line)}
+.auth-msg{font-size:.88rem; border-radius:8px; padding:10px 12px; margin:0}
+.auth-msg.ok{background:var(--ok-soft); color:var(--ok)}
+.auth-msg.err{background:var(--bad-soft); color:var(--bad)}
+.auth-msg.warn{background:var(--warn-soft); color:var(--ink)}
+.auth-links{display:flex; flex-direction:column; gap:4px; align-items:flex-start; font-size:.88rem; color:var(--muted)}
+.auth-links .btn.ghost{padding-inline:2px}
+.who{display:flex; align-items:center; gap:6px; font-size:.82rem; color:var(--muted); min-width:0}
+.who-email{max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+@media (max-width:860px){
+  .auth-wrap{grid-template-columns:minmax(0,1fr); gap:24px}
+  .auth-intro .steps{display:none}
+}

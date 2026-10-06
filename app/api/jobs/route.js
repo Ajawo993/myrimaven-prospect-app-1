@@ -1,7 +1,12 @@
 /* GET /api/jobs?company=...&where=...  ->  recent job postings for one employer (Adzuna) */
-import { jobPostings, errorResponse } from "@/lib/server";
+import { jobPostings, requireUser, errorResponse } from "@/lib/server";
 
 export async function GET(request) {
+  try {
+    await requireUser(request);
+  } catch (e) {
+    return errorResponse(e);
+  }
   const q = new URL(request.url).searchParams;
   const company = String(q.get("company") || "").trim().slice(0, 160);
   if (!company) return Response.json({ error: "company is required" }, { status: 400 });

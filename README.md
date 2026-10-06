@@ -12,6 +12,7 @@ Myrimaven has not yet identified a paying organizational customer or a clear ide
 | `/prospects` | Prospect list sorted by fit, follow-ups, status filter, CSV export | Follow-up actions, prospect status |
 | `/prospects/[id]` | Profile: fit rating, assessment, evidence, hiring activity, contacts, outreach log, next step | Workflow 2: Qualify; Workflow 3: Contact and learn |
 | `/learnings` | Not-a-fit reasons, warm vs. cold, responses by sector, lessons | Workflow 3: learning from outreach |
+| `/login` | Sign in with Google or with email and password; create an account; email a sign-in link | Access to Joan's prospect data |
 | `/api/analyze`, `/api/suggest`, `/api/jobs`, `/api/status` | Server routes for AI analysis and job postings | "Why is this a prospect?" analysis, hiring activity |
 
 ## Features
@@ -55,6 +56,7 @@ app/
   prospects/page.js         /prospects
   prospects/[id]/page.js    /prospects/<id>
   learnings/page.js         /learnings
+  login/page.js             /login
   api/analyze/route.js      POST: AI assessment (Anthropic API)
   api/suggest/route.js      POST: AI-suggested organizations (+ Adzuna counts)
   api/jobs/route.js         GET: recent job postings for an employer (Adzuna API)
@@ -62,6 +64,7 @@ app/
   globals.css               all styles
 components/                 the screens and shared UI (client components)
 lib/
+  supabase.js               the Supabase client used for sign-in
   storage.js                where prospects are saved (swap this for Supabase)
   catalog.js                the 15 fictional sample organizations
   fit.js                    fit criteria and rating
@@ -96,11 +99,45 @@ The app works without any keys. AI and job postings switch on when these environ
 
 Keys stay on the server and are never sent to the browser. The API routes are public, so set a monthly spend limit in the Anthropic console.
 
+## Sign-in (Supabase Auth)
+
+The `/login` screen offers two ways to sign in: **Google**, and **email and password**. It also lets people create an account and, if they forget their password, email themselves a sign-in link. Once sign-in is set up, every screen needs it: signed-out visitors go to `/login` and return to the page they wanted afterwards. The AI and job-posting API routes also check the sign-in token, so strangers can't use up the API credit.
+
+Until the Supabase keys below are set, the app stays open and `/login` says sign-in isn't connected yet.
+
+### 1. Create the Supabase project
+
+1. At supabase.com, create a project.
+2. In **Project Settings → API Keys**, copy the **Project URL** and the **publishable key** (`sb_publishable_...`).
+3. In Vercel, under **Settings → Environment Variables**, add:
+   - `NEXT_PUBLIC_SUPABASE_URL`: the Project URL
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: the publishable key
+4. Redeploy. These values are built into the app, so they only take effect after a new deployment.
+
+### 2. Tell Supabase where the app lives
+
+In Supabase, go to **Authentication → URL Configuration**:
+
+- **Site URL:** your Vercel URL, e.g. `https://your-app.vercel.app`
+- **Redirect URLs:** add `https://your-app.vercel.app/**` (and `http://localhost:3000/**` for local development)
+
+### 3. Email and password
+
+Email sign-in is on by default in **Authentication → Sign In / Providers → Email**. With "Confirm email" on, new accounts get a confirmation email first. Supabase's built-in email service only sends a few emails an hour, which is fine for testing; for real use, set up custom SMTP under **Authentication → Emails**.
+
+### 4. Google
+
+1. In Google Cloud Console, go to **Google Auth Platform**. Set up the consent screen with your app name and the `openid`, `email` and `profile` scopes. While it's in "Testing", only the Google accounts you add as test users can sign in. Publish it to let anyone sign in.
+2. Under **Clients**, create an **OAuth client ID** of type **Web application**:
+   - **Authorized JavaScript origins:** your Vercel URL
+   - **Authorized redirect URIs:** the callback URL shown on Supabase's Google provider page, which looks like `https://<project-ref>.supabase.co/auth/v1/callback`
+3. Copy the Client ID and Client Secret into Supabase under **Authentication → Sign In / Providers → Google**, turn it on, and save.
+
 ## Saving data, and moving to Supabase
 
-Today, prospects save in the browser's localStorage, so data stays on one computer and isn't shared between people.
+Today, prospects save in the browser's localStorage, so data stays on one computer and isn't shared between people. Sign-in controls who can open the app, but the data itself isn't tied to an account yet.
 
-Every save in the app goes through `components/ProspectsProvider.js`, which only calls the three functions in `lib/storage.js`: `loadProspects`, `saveProspect` and `deleteProspect`. Moving to Supabase means rewriting those three functions to read and write a Supabase table. The screens don't need to change. A simple first version is one `prospects` table with an `id` and a JSON `data` column, which matches how prospects are stored now. Contacts and outreach can be split into their own tables later.
+Every save in the app goes through `components/ProspectsProvider.js`, which only calls the three functions in `lib/storage.js`: `loadProspects`, `saveProspect` and `deleteProspect`. Moving to Supabase means rewriting those three functions to read and write a Supabase table. The screens don't need to change. A simple first version is one `prospects` table with an `id`, a `user_id` (the signed-in person, from Supabase Auth) and a JSON `data` column, which matches how prospects are stored now. Turn on row-level security so each person only sees their own rows. Contacts and outreach can be split into their own tables later.
 
 ## Trying it
 

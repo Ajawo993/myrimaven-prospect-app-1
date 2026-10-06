@@ -1,4 +1,5 @@
 import "./globals.css";
+import AuthProvider, { AuthGate } from "@/components/AuthProvider";
 import ProspectsProvider from "@/components/ProspectsProvider";
 import Header from "@/components/Header";
 
@@ -25,10 +26,14 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <ProspectsProvider>
-          <Header />
-          <main>{children}</main>
-        </ProspectsProvider>
+        <AuthProvider>
+          <ProspectsProvider>
+            <Header />
+            <main>
+              <AuthGate>{children}</AuthGate>
+            </main>
+          </ProspectsProvider>
+        </AuthProvider>
       </body>
     </html>
   );
