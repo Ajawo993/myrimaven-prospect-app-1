@@ -1,0 +1,32 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useProspects } from "./ProspectsProvider";
+
+const TABS = [["discover", "Discover"], ["prospects", "Prospects"], ["learnings", "Learnings"]];
+const STORE_LABEL = { loading: "Connecting…", local: "Saved in this browser", memory: "This visit only" };
+
+export default function Header() {
+  const pathname = usePathname() || "";
+  const { list, mode } = useProspects();
+  const n = list.length;
+  return (
+    <header className="bar">
+      <div className="bar-in">
+        <Link href="/discover" className="brand" style={{ color: "inherit", textDecoration: "none" }}>
+          <b>Myrimaven</b><span>Prospect Desk</span>
+        </Link>
+        <nav className="tabs" aria-label="Views">
+          {TABS.map(([v, label]) => (
+            <Link key={v} href={"/" + v} className="tab" aria-current={pathname.startsWith("/" + v) ? "page" : undefined}>
+              {label}
+              {v === "prospects" && n ? <span className="n">{n}</span> : null}
+            </Link>
+          ))}
+        </nav>
+        <div className={"store " + mode}><i></i><span>{STORE_LABEL[mode]}</span></div>
+      </div>
+    </header>
+  );
+}
