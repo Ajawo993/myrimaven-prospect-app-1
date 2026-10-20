@@ -6,7 +6,7 @@ import { useProspects } from "./ProspectsProvider";
 import { useAuth } from "./AuthProvider";
 
 const TABS = [["discover", "Discover"], ["prospects", "Prospects"], ["learnings", "Learnings"]];
-const STORE_LABEL = { loading: "Connecting…", local: "Saved in this browser", memory: "This visit only" };
+const STORE_LABEL = { loading: "Connecting…", cloud: "Saved to your account", local: "Saved in this browser", memory: "Not saving" };
 
 export default function Header() {
   const pathname = usePathname() || "";

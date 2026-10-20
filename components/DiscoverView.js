@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useProspects } from "./ProspectsProvider";
 import { FitPill, HowRate } from "./Fit";
 import PreviewSheet from "./PreviewSheet";
-import { CATALOG } from "@/lib/catalog";
 import { SIGNALS } from "@/lib/constants";
 import { CRIT, RANK, decodeFit, fitOf } from "@/lib/fit";
 import { newProspect, jobsText, jobsEvidence, guessSignals } from "@/lib/prospect";
@@ -17,7 +16,7 @@ const RATINGS = [["all", "All fits"], ["Strong", "Strong"], ["Moderate", "Modera
 
 export default function DiscoverView() {
   const router = useRouter();
-  const { list, mode, server, aiOn, setAiOff, save, toast } = useProspects();
+  const { list, mode, catalog, server, aiOn, setAiOff, save, toast } = useProspects();
 
   const [q, setQ] = useState("");
   const [signal, setSignal] = useState("all");
@@ -36,7 +35,7 @@ export default function DiscoverView() {
 
   const cards = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return CATALOG
+    return catalog
       .map((c) => ({ c, f: fitOf({ fit: decodeFit(c.fit), contacts: [] }) }))
       .filter(({ c, f }) =>
         (showOutside || !c.outside) &&
@@ -44,9 +43,9 @@ export default function DiscoverView() {
         (rating === "all" || f.rating === rating) &&
         (!term || [c.name, c.sector, c.region, c.summary].join(" ").toLowerCase().includes(term)))
       .sort((a, b) => RANK[a.f.rating] - RANK[b.f.rating] || b.f.yes.length - a.f.yes.length || a.f.no.length - b.f.no.length);
-  }, [q, signal, rating, showOutside]);
+  }, [catalog, q, signal, rating, showOutside]);
 
-  const outsideCount = CATALOG.filter((c) => c.outside).length;
+  const outsideCount = catalog.filter((c) => c.outside).length;
 
   async function runSuggest() {
     if (!aiOn) return;

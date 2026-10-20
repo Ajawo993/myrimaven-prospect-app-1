@@ -2,7 +2,7 @@
 
 /* /prospects — follow-ups, status, and the prospect list sorted by fit */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useProspects } from "./ProspectsProvider";
 import { FitPill, HowRate } from "./Fit";
@@ -10,6 +10,8 @@ import { STATUSES } from "@/lib/constants";
 import { CRIT, fitOf, fitSort } from "@/lib/fit";
 import { cls, fmtDate, whenClass, whenText } from "@/lib/format";
 import { prospectsCsv, outreachCsv, downloadCsv } from "@/lib/csv";
+import { browserProspects, copyDismissed, dismissCopy } from "@/lib/storage";
+import { upgrade } from "@/lib/prospect";
 
 const SORTERS = {
   fit: fitSort,
@@ -19,11 +21,35 @@ const SORTERS = {
 
 export function ModeBanner({ mode }) {
   if (mode !== "memory") return null;
-  return <p className="banner">This browser can&apos;t save, so prospects last until you close the page.</p>;
+  return <p className="banner">Prospects aren&apos;t being saved right now, so changes last until you close the page.</p>;
+}
+
+/* After sign-in is turned on, offer to move prospects saved in this browser into the account */
+function CopyFromBrowser({ list, save, toast }) {
+  const [local, setLocal] = useState([]);
+  const [hidden, setHidden] = useState(true);
+  useEffect(() => {
+    setLocal(browserProspects());
+    setHidden(copyDismissed());
+  }, []);
+  const have = new Set(list.map((p) => p.id));
+  const toCopy = local.filter((p) => p && p.id && !have.has(p.id));
+  if (hidden || !toCopy.length) return null;
+  return (
+    <div className="banner" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
+      <span>{toCopy.length} prospect{toCopy.length === 1 ? " is" : "s are"} saved only in this browser.</span>
+      <span style={{ display: "flex", gap: 6 }}>
+        <button className="btn small primary" onClick={() => { toCopy.forEach((p) => save(upgrade(JSON.parse(JSON.stringify(p))))); toast(`Copied ${toCopy.length} to your account.`); }}>
+          Copy to my account
+        </button>
+        <button className="btn small ghost" onClick={() => { dismissCopy(); setHidden(true); }}>Not now</button>
+      </span>
+    </div>
+  );
 }
 
 export default function ProspectListView() {
-  const { list, mode, clearAll, loadExamples, toast } = useProspects();
+  const { list, mode, save, clearAll, loadExamples, toast } = useProspects();
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("fit");
   const [confirmClear, setConfirmClear] = useState(false);
@@ -48,6 +74,7 @@ export default function ProspectListView() {
         </div>
       </section>
       <ModeBanner mode={mode} />
+      {mode === "cloud" ? <CopyFromBrowser list={list} save={save} toast={toast} /> : null}
     </>
   );
 

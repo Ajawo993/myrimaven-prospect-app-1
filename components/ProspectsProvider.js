@@ -1,12 +1,15 @@
 "use client";
 
 /* Holds the saved prospects for the whole app and is the only place that
-   talks to lib/storage.js. Pages read and change prospects through useProspects(). */
+   talks to lib/storage.js. Pages read and change prospects through useProspects().
+   Signed in: prospects come from Supabase. Sign-in not set up: from this browser. */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { loadProspects, saveProspect, deleteProspect } from "@/lib/storage";
+import { loadProspects, saveProspect, deleteProspect, loadOrganizations } from "@/lib/storage";
 import { fetchStatus } from "@/lib/api";
 import { buildExamples, upgrade } from "@/lib/prospect";
+import { CATALOG } from "@/lib/catalog";
+import { useAuth } from "./AuthProvider";
 
 const ProspectsContext = createContext(null);
 
@@ -15,9 +18,12 @@ export function useProspects() {
 }
 
 export default function ProspectsProvider({ children }) {
+  const { status, user } = useAuth();
+  const userId = user ? user.id : null;
   const [prospects, setProspects] = useState({});
   const ref = useRef({});
-  const [mode, setMode] = useState("loading"); // loading | local | memory
+  const [mode, setMode] = useState("loading"); // loading | cloud | local | memory
+  const [catalog, setCatalog] = useState(CATALOG);
   const [server, setServer] = useState({ ai: false, jobs: false });
   const [aiOff, setAiOff] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
@@ -30,26 +36,48 @@ export default function ProspectsProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    fetchStatus().then((s) => setServer({ ai: !!s.ai, jobs: !!s.jobs })).catch(() => {});
+    return () => clearTimeout(timer.current);
+  }, []);
+
+  /* Load (again) whenever who's signed in changes */
+  useEffect(() => {
+    if (status === "loading") return;
     let alive = true;
-    fetchStatus()
-      .then((s) => { if (alive) setServer({ ai: !!s.ai, jobs: !!s.jobs }); })
-      .catch(() => {});
-    loadProspects().then(({ mode: m, prospects: list }) => {
+    const apply = ({ mode: m, prospects: list }) => {
       if (!alive) return;
       const map = {};
       list.forEach((p) => { map[p.id] = upgrade(p); });
       ref.current = map;
       setProspects(map);
       setMode(m);
-    });
-    return () => { alive = false; clearTimeout(timer.current); };
-  }, []);
+    };
+    if (status === "signedOut") {
+      apply({ mode: "loading", prospects: [] });
+      return () => { alive = false; };
+    }
+    const cloud = status === "signedIn";
+    setMode("loading");
+    loadProspects({ cloud })
+      .then((res) => {
+        apply(res);
+        if (res.mode === "cloud") {
+          loadOrganizations().then((orgs) => { if (alive && orgs) setCatalog(orgs); }).catch(() => {});
+        }
+      })
+      .catch(() => {
+        if (!alive) return;
+        toast("Couldn't load your prospects from the database. Check that supabase/schema.sql has been run.");
+        apply({ mode: "memory", prospects: [] });
+      });
+    return () => { alive = false; };
+  }, [status, userId, toast]);
 
   const save = useCallback((p) => {
     const next = { ...p, updatedAt: Date.now() };
     ref.current = { ...ref.current, [next.id]: next };
     setProspects(ref.current);
-    saveProspect(next).catch(() => toast("Couldn't save in this browser. Changes last until you close the page."));
+    saveProspect(next).catch(() => toast("Couldn't save that change. Check your connection and try again."));
     return next;
   }, [toast]);
 
@@ -57,7 +85,7 @@ export default function ProspectsProvider({ children }) {
     const { [id]: _gone, ...rest } = ref.current;
     ref.current = rest;
     setProspects(rest);
-    deleteProspect(id).catch(() => toast("Couldn't update browser storage."));
+    deleteProspect(id).catch(() => toast("Couldn't remove that prospect. Check your connection and try again."));
   }, [toast]);
 
   const clearAll = useCallback(() => {
@@ -82,6 +110,7 @@ export default function ProspectsProvider({ children }) {
     prospects,
     list: Object.values(prospects),
     mode,
+    catalog,
     server,
     aiOn: !aiOff && server.ai,
     setAiOff,
@@ -91,7 +120,7 @@ export default function ProspectsProvider({ children }) {
     get,
     loadExamples,
     toast,
-  }), [prospects, mode, server, aiOff, save, remove, clearAll, get, loadExamples, toast]);
+  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, toast]);
 
   return (
     <ProspectsContext.Provider value={value}>

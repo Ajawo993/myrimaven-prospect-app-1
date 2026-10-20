@@ -63,9 +63,12 @@ app/
   api/status/route.js       GET: which server features are switched on
   globals.css               all styles
 components/                 the screens and shared UI (client components)
+supabase/
+  schema.sql                creates the database tables, security rules and save function
+  seed.sql                  adds the 15 sample organizations
 lib/
   supabase.js               the Supabase client used for sign-in
-  storage.js                where prospects are saved (swap this for Supabase)
+  storage.js                where prospects are saved: Supabase when signed in, else the browser
   catalog.js                the 15 fictional sample organizations
   fit.js                    fit criteria and rating
   prompts.js, server.js     AI prompts and server helpers for app/api
@@ -133,11 +136,29 @@ Email sign-in is on by default in **Authentication → Sign In / Providers → E
    - **Authorized redirect URIs:** the callback URL shown on Supabase's Google provider page, which looks like `https://<project-ref>.supabase.co/auth/v1/callback`
 3. Copy the Client ID and Client Secret into Supabase under **Authentication → Sign In / Providers → Google**, turn it on, and save.
 
-## Saving data, and moving to Supabase
+## Database (Supabase)
 
-Today, prospects save in the browser's localStorage, so data stays on one computer and isn't shared between people. Sign-in controls who can open the app, but the data itself isn't tied to an account yet.
+Once sign-in is set up, prospects save to Supabase tables instead of the browser, so they follow each person's account to any device and stay private to them. The header shows "Saved to your account". Without sign-in, the app keeps saving in the browser as before.
 
-Every save in the app goes through `components/ProspectsProvider.js`, which only calls the three functions in `lib/storage.js`: `loadProspects`, `saveProspect` and `deleteProspect`. Moving to Supabase means rewriting those three functions to read and write a Supabase table. The screens don't need to change. A simple first version is one `prospects` table with an `id`, a `user_id` (the signed-in person, from Supabase Auth) and a JSON `data` column, which matches how prospects are stored now. Turn on row-level security so each person only sees their own rows. Contacts and outreach can be split into their own tables later.
+| Table | What it holds |
+|---|---|
+| `organizations` | The 15 sample organizations shown on Discover (shared, read-only) |
+| `prospects` | Each saved organization: details, fit answers, status, next step, follow-up date, notes, the assessment |
+| `contacts` | People at a prospect, with purchasing authority and connection (warm, referral, cold) |
+| `outreach` | Each contact attempt: date, channel, response, reason it wasn't a fit, what was learned |
+| `evidence` | Evidence for "Why is this a prospect?", and whether it's been checked |
+| `unknowns` | Open questions to validate, and whether they're answered |
+
+Every row carries the owner's `user_id`, and row-level security means each signed-in person can only read and change their own rows. The app saves a whole prospect at once through the `save_prospect` database function, which writes the prospect and its contacts, outreach, evidence and unknowns in one transaction.
+
+### Creating the tables
+
+1. In Supabase, open **SQL Editor → New query**.
+2. Paste in all of `supabase/schema.sql` and click **Run**.
+3. Open another new query, paste in `supabase/seed.sql`, and click **Run**. This adds the sample organizations.
+4. Check **Table Editor**: you should see the six tables, with 15 rows in `organizations`.
+
+Both scripts are safe to run again. After signing in, the Prospects page offers to copy any prospects saved in that browser into the account.
 
 ## Trying it
 

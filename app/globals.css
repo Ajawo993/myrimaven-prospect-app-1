@@ -57,7 +57,7 @@ a{color:var(--accent)}
 .tab .n{font-family:var(--f-mono); font-size:.75rem; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:0 7px}
 .store{font-size:.78rem; display:flex; align-items:center; gap:6px; color:var(--muted)}
 .store i{width:8px; height:8px; border-radius:50%; background:var(--muted); display:inline-block}
-.store.db i,.store.local i{background:var(--ok)} .store.memory i{background:var(--warn)}
+.store.db i,.store.local i,.store.cloud i{background:var(--ok)} .store.memory i{background:var(--warn)}
 
 main{max-width:1200px; margin:0 auto; padding-inline:16px; padding-block:28px 64px; display:flex; flex-direction:column; gap:24px}
 
