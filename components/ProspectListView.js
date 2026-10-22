@@ -49,7 +49,9 @@ function CopyFromBrowser({ list, save, toast }) {
 }
 
 export default function ProspectListView() {
-  const { list, mode, save, clearAll, loadExamples, toast } = useProspects();
+  const { list, mode, save, clearAll, loadExamples, resetSample, toast } = useProspects();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("fit");
   const [confirmClear, setConfirmClear] = useState(false);
@@ -61,7 +63,18 @@ export default function ProspectListView() {
       <section className="head-row">
         <div><p className="eyebrow">Prospects</p><h1>Your prospects</h1></div>
         <div className="row" style={{ flex: "0 0 auto" }}>
-          {list.length ? (confirmClear ? (
+          {mode === "cloud" ? (confirmReset ? (
+            <span className="confirm">
+              Replace all your prospects with fresh sample data?
+              <button className="btn small danger" disabled={resetting} onClick={async () => { setResetting(true); await resetSample(); setResetting(false); setConfirmReset(false); }}>
+                {resetting ? <span className="dots">Resetting</span> : "Reset"}
+              </button>
+              <button className="btn small" onClick={() => setConfirmReset(false)}>Keep</button>
+            </span>
+          ) : (
+            <button className="btn ghost small" onClick={() => setConfirmReset(true)}>Reset sample data</button>
+          )) : null}
+          {list.length && mode !== "cloud" ? (confirmClear ? (
             <span className="confirm">
               Remove all prospects?
               <button className="btn small danger" onClick={() => { clearAll(); setConfirmClear(false); toast("All prospects removed."); }}>Remove all</button>
@@ -87,7 +100,11 @@ export default function ProspectListView() {
           <p>Save an organization from Discover when it looks worth investigating. To see how a qualified prospect looks, load three worked examples.</p>
           <div className="row" style={{ justifyContent: "center" }}>
             <Link className="btn primary" href="/discover">Go to Discover</Link>
-            <button className="btn" onClick={loadExamples}>Load 3 examples</button>
+            {mode === "cloud" ? (
+              <button className="btn" onClick={resetSample}>Load sample data</button>
+            ) : (
+              <button className="btn" onClick={loadExamples}>Load 3 examples</button>
+            )}
           </div>
         </div>
       </>

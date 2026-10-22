@@ -5,7 +5,7 @@
    Signed in: prospects come from Supabase. Sign-in not set up: from this browser. */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { loadProspects, saveProspect, deleteProspect, loadOrganizations } from "@/lib/storage";
+import { loadProspects, saveProspect, deleteProspect, loadOrganizations, resetWorkspace } from "@/lib/storage";
 import { fetchStatus } from "@/lib/api";
 import { buildExamples, upgrade } from "@/lib/prospect";
 import { CATALOG } from "@/lib/catalog";
@@ -27,6 +27,7 @@ export default function ProspectsProvider({ children }) {
   const [server, setServer] = useState({ ai: false, jobs: false });
   const [aiOff, setAiOff] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const timer = useRef(null);
 
   const toast = useCallback((msg) => {
@@ -71,7 +72,7 @@ export default function ProspectsProvider({ children }) {
         apply({ mode: "memory", prospects: [] });
       });
     return () => { alive = false; };
-  }, [status, userId, toast]);
+  }, [status, userId, toast, reloadKey]);
 
   const save = useCallback((p) => {
     const next = { ...p, updatedAt: Date.now() };
@@ -106,6 +107,17 @@ export default function ProspectsProvider({ children }) {
     toast("Added three worked examples. They're marked Example.");
   }, [save, toast]);
 
+  /* Signed in: replace this account's data with a fresh copy of the sample workspace */
+  const resetSample = useCallback(async () => {
+    try {
+      const n = await resetWorkspace();
+      setReloadKey((k) => k + 1);
+      toast(`Sample data reloaded: ${n} prospects.`);
+    } catch {
+      toast("Couldn't reset the sample data. Check that supabase/sample_data.sql has been run.");
+    }
+  }, [toast]);
+
   const value = useMemo(() => ({
     prospects,
     list: Object.values(prospects),
@@ -119,8 +131,9 @@ export default function ProspectsProvider({ children }) {
     clearAll,
     get,
     loadExamples,
+    resetSample,
     toast,
-  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, toast]);
+  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, resetSample, toast]);
 
   return (
     <ProspectsContext.Provider value={value}>

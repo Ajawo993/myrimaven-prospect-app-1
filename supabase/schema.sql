@@ -185,11 +185,12 @@ grant select, insert, update, delete on public.prospects, public.contacts, publi
 
 -- ───────────────────────── save a whole prospect in one step ─────────────────────────
 -- The app sends one prospect (with its contacts, outreach, evidence and unknowns) as JSON.
--- This saves it all in a single transaction, as the signed-in user, under the rules above.
-create or replace function public.save_prospect(p jsonb) returns void
+-- save_prospect saves it all in a single transaction as the signed-in user.
+-- _save_prospect_as does the work; called by a user, row-level security still applies,
+-- so nobody can save into someone else's account. The starter-workspace copy uses it too.
+create or replace function public._save_prospect_as(uid uuid, p jsonb) returns void
 language plpgsql security invoker set search_path = '' as $$
 declare
-  uid uuid := (select auth.uid());
   pid text := p ->> 'id';
 begin
   if uid is null then
@@ -207,7 +208,7 @@ begin
     status, fit, fit_why, fit_note, next_action, follow_up_date, notes, jobs, assessment, created_at
   ) values (
     pid, uid,
-    nullif(p ->> 'catalogKey', ''),
+    (select o.key from public.organizations o where o.key = nullif(p ->> 'catalogKey', '')),
     coalesce(nullif(p ->> 'name', ''), 'Untitled organization'),
     coalesce(p ->> 'sector', ''), coalesce(p ->> 'size', ''), coalesce(p ->> 'region', ''),
     coalesce(p ->> 'website', ''), coalesce(p ->> 'summary', ''),
@@ -231,7 +232,6 @@ begin
     jobs = excluded.jobs, assessment = excluded.assessment
   where t.user_id = uid;
 
-  -- Replace the child rows with what the app sent
   delete from public.outreach where prospect_id = pid;
   delete from public.evidence where prospect_id = pid;
   delete from public.unknowns where prospect_id = pid;
@@ -270,5 +270,14 @@ begin
 end;
 $$;
 
+create or replace function public.save_prospect(p jsonb) returns void
+language plpgsql security invoker set search_path = '' as $$
+begin
+  perform public._save_prospect_as((select auth.uid()), p);
+end;
+$$;
+
+revoke all on function public._save_prospect_as(uuid, jsonb) from public, anon;
+grant execute on function public._save_prospect_as(uuid, jsonb) to authenticated;
 revoke all on function public.save_prospect(jsonb) from public, anon;
 grant execute on function public.save_prospect(jsonb) to authenticated;
