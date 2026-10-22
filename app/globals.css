@@ -288,3 +288,19 @@ td.n{font-family:var(--f-mono); text-align:right} th.n{text-align:right}
   .auth-wrap{grid-template-columns:minmax(0,1fr); gap:24px}
   .auth-intro .steps{display:none}
 }
+
+/* discover: filters as drop-downs, quieter cards */
+.filterbar{display:grid; grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr)); gap:10px; align-items:end}
+.resultline{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap}
+.org-top{display:flex; justify-content:space-between; align-items:baseline; gap:8px}
+.org p.sum{display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; color:var(--muted)}
+.tag.out{background:var(--warn-soft); color:var(--warn)}
+.sheet-facts{display:flex; flex-direction:column; gap:8px}
+@media (max-width:760px){ .filterbar{grid-template-columns:repeat(2,minmax(0,1fr))} .filterbar .grow{grid-column:1 / -1} }
+.filterbar input,.filterbar select{height:40px}
+.filterbar input[type=search]{-webkit-appearance:none; appearance:none}
+details.addorg > summary{list-style:none; cursor:pointer; display:flex; flex-direction:column; gap:4px}
+details.addorg > summary::-webkit-details-marker{display:none}
+details.addorg > summary h2::after{content:" +"; color:var(--accent); font-weight:500}
+details.addorg[open] > summary h2::after{content:" –"}
+details.addorg[open] > summary{margin-bottom:4px}

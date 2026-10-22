@@ -9,7 +9,7 @@ import { cls, fmtDate } from "@/lib/format";
 const POSITIVE = ["Interested", "Meeting booked"];
 
 export default function LearningsView() {
-  const { list, mode, loadExamples, resetSample } = useProspects();
+  const { list, mode, loadExamples, addSample } = useProspects();
 
   if (mode === "loading") return <p className="muted">Loading…</p>;
 
@@ -30,7 +30,7 @@ export default function LearningsView() {
         <div className="panel empty">
           <h2>Nothing to learn from yet</h2>
           <p>Log outreach on a prospect and the reasons and lessons collect here.</p>
-          {mode === "cloud" ? <button className="btn" onClick={resetSample}>Load sample data</button> : <button className="btn" onClick={loadExamples}>Load 3 examples</button>}
+          {mode === "cloud" ? <button className="btn primary" onClick={addSample}>Load sample prospects</button> : <button className="btn primary" onClick={loadExamples}>Load 3 examples</button>}
         </div>
       </>
     );

@@ -4,10 +4,11 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { decodeFit } from "@/lib/fit";
 import { FitCriteria } from "./Fit";
+import { SIGNALS } from "@/lib/constants";
 import AnalysisBlock from "./AnalysisBlock";
 
 /* Side panel answering "Why might this organization need Myrimaven?" before saving */
-export default function PreviewSheet({ preview, savedId, onSave, onClose }) {
+export default function PreviewSheet({ preview, savedId, onSave, onClose, onLeave }) {
   const primary = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -39,6 +40,15 @@ export default function PreviewSheet({ preview, savedId, onSave, onClose }) {
           <button className="btn ghost" onClick={onClose} aria-label="Close">Close</button>
         </div>
         {org.summary && by !== "ai" ? <p>{org.summary}</p> : null}
+        {(org.signals || []).length || org.hiring ? (
+          <div className="sheet-facts">
+            {(org.signals || []).length ? <div className="tags">{org.signals.map((s) => <span key={s} className="tag">{SIGNALS[s] || s}</span>)}</div> : null}
+            {org.hiring ? <p className="hire">Hiring: {org.hiring}</p> : null}
+          </div>
+        ) : null}
+        {org.outside ? (
+          <p className="flag">Outside current focus: {(org.sector || "").startsWith("K") ? "K–12 outreach got no replies and Myrimaven is focused on adults." : "career coaches aren't a current target."}</p>
+        ) : null}
         <div>
           <h4 style={{ marginBottom: 8 }}>Fit against your criteria</h4>
           <FitCriteria prospect={pseudo} />
@@ -46,7 +56,7 @@ export default function PreviewSheet({ preview, savedId, onSave, onClose }) {
         <AnalysisBlock analysis={analysis} by={by} />
         <div className="sheet-actions">
           {savedId ? (
-            <Link ref={primary} className="btn primary" href={`/prospects/${savedId}`}>Open saved prospect</Link>
+            <Link ref={primary} className="btn primary" href={`/prospects/${savedId}`} onClick={() => onLeave && onLeave()}>Open saved prospect</Link>
           ) : (
             <button ref={primary} className="btn primary" onClick={onSave}>Save as prospect</button>
           )}

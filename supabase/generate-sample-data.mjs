@@ -587,6 +587,23 @@ $$;
 revoke all on function public.reset_my_workspace() from public, anon;
 grant execute on function public.reset_my_workspace() to authenticated;
 
+-- ───────────────────────── add the sample prospects, keep your own ─────────────────────────
+-- The app's "Load sample prospects" button calls this. It adds the sample prospects
+-- (or brings back any that were changed or removed) and leaves your own prospects alone.
+create or replace function public.load_sample_data() returns integer
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := (select auth.uid());
+begin
+  if uid is null then
+    raise exception 'Sign in first' using errcode = '42501';
+  end if;
+  return public.seed_starter_workspace(uid);
+end;
+$$;
+revoke all on function public.load_sample_data() from public, anon;
+grant execute on function public.load_sample_data() to authenticated;
+
 -- ───────────────────────── accounts that already exist ─────────────────────────
 -- Give the starter workspace to existing accounts that have no prospects yet.
 select public.seed_starter_workspace(u.id)

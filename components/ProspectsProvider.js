@@ -5,7 +5,7 @@
    Signed in: prospects come from Supabase. Sign-in not set up: from this browser. */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { loadProspects, saveProspect, deleteProspect, loadOrganizations, resetWorkspace } from "@/lib/storage";
+import { loadProspects, saveProspect, deleteProspect, loadOrganizations, resetWorkspace, loadSampleData } from "@/lib/storage";
 import { fetchStatus } from "@/lib/api";
 import { buildExamples, upgrade } from "@/lib/prospect";
 import { CATALOG } from "@/lib/catalog";
@@ -118,6 +118,17 @@ export default function ProspectsProvider({ children }) {
     }
   }, [toast]);
 
+  /* Signed in: add the sample prospects without touching the user's own */
+  const addSample = useCallback(async () => {
+    try {
+      const n = await loadSampleData();
+      setReloadKey((k) => k + 1);
+      toast(`Loaded ${n} sample prospects. Your own prospects are unchanged.`);
+    } catch {
+      toast("Couldn't load the sample prospects. Check that supabase/sample_data.sql has been run.");
+    }
+  }, [toast]);
+
   const value = useMemo(() => ({
     prospects,
     list: Object.values(prospects),
@@ -132,8 +143,9 @@ export default function ProspectsProvider({ children }) {
     get,
     loadExamples,
     resetSample,
+    addSample,
     toast,
-  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, resetSample, toast]);
+  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, resetSample, addSample, toast]);
 
   return (
     <ProspectsContext.Provider value={value}>

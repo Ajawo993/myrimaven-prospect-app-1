@@ -49,7 +49,8 @@ function CopyFromBrowser({ list, save, toast }) {
 }
 
 export default function ProspectListView() {
-  const { list, mode, save, clearAll, loadExamples, resetSample, toast } = useProspects();
+  const { list, mode, save, clearAll, loadExamples, resetSample, addSample, toast } = useProspects();
+  const [loadingSample, setLoadingSample] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -58,12 +59,26 @@ export default function ProspectListView() {
 
   if (mode === "loading") return <p className="muted">Loading your prospects…</p>;
 
+  const hasSample = mode === "cloud" ? list.some((p) => p.id.startsWith("sp-")) : list.some((p) => p.example);
+  const onLoadSample = async () => {
+    if (mode !== "cloud") { loadExamples(); return; }
+    setLoadingSample(true);
+    await addSample();
+    setLoadingSample(false);
+  };
+
   const head = (
     <>
       <section className="head-row">
         <div><p className="eyebrow">Prospects</p><h1>Your prospects</h1></div>
         <div className="row" style={{ flex: "0 0 auto" }}>
-          {mode === "cloud" ? (confirmReset ? (
+          {list.length && !hasSample ? (
+            <button className="btn" disabled={loadingSample} onClick={onLoadSample}
+              title={mode === "cloud" ? "Adds 40 fictional prospects. Your own prospects stay." : "Adds three worked examples."}>
+              {loadingSample ? <span className="dots">Loading</span> : mode === "cloud" ? "Load sample prospects" : "Load 3 examples"}
+            </button>
+          ) : null}
+          {mode === "cloud" && hasSample ? (confirmReset ? (
             <span className="confirm">
               Replace all your prospects with fresh sample data?
               <button className="btn small danger" disabled={resetting} onClick={async () => { setResetting(true); await resetSample(); setResetting(false); setConfirmReset(false); }}>
@@ -97,14 +112,14 @@ export default function ProspectListView() {
         {head}
         <div className="panel empty">
           <h2>No prospects yet</h2>
-          <p>Save an organization from Discover when it looks worth investigating. To see how a qualified prospect looks, load three worked examples.</p>
+          <p>{mode === "cloud"
+            ? "Save an organization from Discover when it looks worth investigating. To see how the app looks after a few weeks of outreach, load the 40 sample prospects."
+            : "Save an organization from Discover when it looks worth investigating. To see how a qualified prospect looks, load three worked examples."}</p>
           <div className="row" style={{ justifyContent: "center" }}>
-            <Link className="btn primary" href="/discover">Go to Discover</Link>
-            {mode === "cloud" ? (
-              <button className="btn" onClick={resetSample}>Load sample data</button>
-            ) : (
-              <button className="btn" onClick={loadExamples}>Load 3 examples</button>
-            )}
+            <button className="btn primary" disabled={loadingSample} onClick={onLoadSample}>
+              {loadingSample ? <span className="dots">Loading</span> : mode === "cloud" ? "Load sample prospects" : "Load 3 examples"}
+            </button>
+            <Link className="btn" href="/discover">Go to Discover</Link>
           </div>
         </div>
       </>
