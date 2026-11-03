@@ -305,10 +305,26 @@ details.addorg > summary h2::after{content:" +"; color:var(--accent); font-weigh
 details.addorg[open] > summary h2::after{content:" –"}
 details.addorg[open] > summary{margin-bottom:4px}
 
-/* light / dark switch */
-.theme-toggle{color:var(--muted); gap:5px}
-.theme-toggle:hover{color:var(--ink)}
-@media (max-width:560px){ .theme-toggle span{display:none} }
+/* top bar: account button and menu */
+.bar-in{flex-wrap:nowrap}
+.brand{min-width:0}
+.icon-btn{width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto}
+.icon-btn:hover{color:var(--ink); border-color:var(--accent)}
+.account{position:relative; flex:0 0 auto}
+.avatar{position:relative; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--accent-soft); color:var(--accent); font-family:var(--f-display); font-weight:700; font-size:.95rem; display:inline-flex; align-items:center; justify-content:center; cursor:pointer}
+.avatar:hover,.avatar[aria-expanded="true"]{border-color:var(--accent)}
+.avatar-warn{position:absolute; top:-1px; right:-1px; width:10px; height:10px; border-radius:50%; background:var(--warn); border:2px solid var(--surface)}
+.menu{position:absolute; right:0; top:calc(100% + 8px); width:250px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:0 8px 28px rgba(15,25,35,.16); padding:6px; display:flex; flex-direction:column; z-index:30}
+.menu-head{display:flex; flex-direction:column; gap:4px; padding:8px 10px 10px; border-bottom:1px solid var(--line); margin-bottom:4px; min-width:0}
+.menu-head b{font-size:.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.menu-item{display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; border:0; border-radius:6px; background:transparent; color:var(--ink); font-size:.9rem; text-align:left; cursor:pointer; text-decoration:none}
+.menu-item:hover,.menu-item:focus-visible{background:var(--sunk)}
+.menu-item svg{color:var(--muted)}
+@media (max-width:600px){
+  .bar-in{flex-wrap:wrap; row-gap:8px; gap:10px}
+  .tabs{order:3; width:100%}
+  .tab{flex:1; justify-content:center}
+}
 
 /* sign-in provider buttons */
 .providers{display:flex; flex-direction:column; gap:8px}
