@@ -1,8 +1,8 @@
 /* POST /api/analyze  {name, website?, notes?}  ->  "Why is this a prospect?" assessment */
 import { analysis, parseJSON, normAnalysis } from "@/lib/prompts";
-import { askClaude, requireUser, readJson, errorResponse } from "@/lib/server";
+import { askAI, requireUser, readJson, errorResponse } from "@/lib/server";
 
-/* Claude can take up to a minute; let Vercel wait that long */
+/* The AI can take up to a minute; let Vercel wait that long */
 export const maxDuration = 60;
 
 export async function POST(request) {
@@ -15,7 +15,7 @@ export async function POST(request) {
   const name = String(b.name || "").trim().slice(0, 200);
   if (!name) return Response.json({ error: "Organization name is required" }, { status: 400 });
   try {
-    const text = await askClaude(analysis(name, String(b.website || "").slice(0, 200), String(b.notes || "").slice(0, 8000)), 2500);
+    const text = await askAI(analysis(name, String(b.website || "").slice(0, 200), String(b.notes || "").slice(0, 8000)), 2500);
     const data = parseJSON(text);
     if (!data) return Response.json({ error: "The AI answer came back in an unexpected shape" }, { status: 502 });
     return Response.json(normAnalysis(data));

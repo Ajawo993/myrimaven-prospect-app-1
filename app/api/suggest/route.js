@@ -1,9 +1,9 @@
 /* POST /api/suggest  {query, region?}  ->  up to 6 suggested organizations,
    with live job-posting counts when Adzuna is set up */
 import { suggest, parseJSON, normSuggest } from "@/lib/prompts";
-import { askClaude, jobPostings, requireUser, readJson, errorResponse } from "@/lib/server";
+import { askAI, jobPostings, requireUser, readJson, errorResponse } from "@/lib/server";
 
-/* Claude can take up to a minute; let Vercel wait that long */
+/* The AI can take up to a minute; let Vercel wait that long */
 export const maxDuration = 60;
 
 export async function POST(request) {
@@ -14,7 +14,7 @@ export async function POST(request) {
   }
   const b = await readJson(request);
   try {
-    const text = await askClaude(suggest(b.query, b.region), 2000);
+    const text = await askAI(suggest(b.query, b.region), 2000);
     const items = normSuggest(parseJSON(text));
     const counts = await Promise.allSettled(
       items.map((x) => (x.kind === "organization" ? jobPostings(x.name, b.region || "") : Promise.resolve(null)))

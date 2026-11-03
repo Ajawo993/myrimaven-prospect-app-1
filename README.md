@@ -57,7 +57,7 @@ app/
   prospects/[id]/page.js    /prospects/<id>
   learnings/page.js         /learnings
   login/page.js             /login
-  api/analyze/route.js      POST: AI assessment (Anthropic API)
+  api/analyze/route.js      POST: AI assessment (OpenRouter or Anthropic)
   api/suggest/route.js      POST: AI-suggested organizations (+ Adzuna counts)
   api/jobs/route.js         GET: recent job postings for an employer (Adzuna API)
   api/status/route.js       GET: which server features are switched on
@@ -97,12 +97,14 @@ The app works without any keys. AI and job postings switch on when these environ
 
 | Variable | Where to get it |
 |---|---|
+| `OPENROUTER_API_KEY` | openrouter.ai → Keys. Free to start; used instead of Anthropic when set |
+| `OPENROUTER_MODEL` (optional) | Defaults to `openrouter/free`, which picks a free model. Or name one, e.g. `meta-llama/llama-3.3-70b-instruct:free` |
 | `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys (needs a small amount of prepaid credit) |
 | `ADZUNA_APP_ID` and `ADZUNA_APP_KEY` | developer.adzuna.com → register for a free key |
 | `ANTHROPIC_MODEL` (optional) | Defaults to `claude-haiku-4-5-20251001` |
 | `ADZUNA_COUNTRY` (optional) | Defaults to `ca` (Canada) |
 
-Keys stay on the server and are never sent to the browser. The API routes are public, so set a monthly spend limit in the Anthropic console.
+Keys stay on the server and are never sent to the browser. Once sign-in is set up, the AI routes only answer signed-in people. With OpenRouter's free models, expect about 50 AI requests a day (1,000 after a one-time $10 credit purchase). With a paid model or Anthropic, set a monthly spend limit in that console.
 
 ## Sign-in (Supabase Auth)
 
