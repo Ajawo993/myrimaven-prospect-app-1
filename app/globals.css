@@ -304,3 +304,12 @@ details.addorg > summary::-webkit-details-marker{display:none}
 details.addorg > summary h2::after{content:" +"; color:var(--accent); font-weight:500}
 details.addorg[open] > summary h2::after{content:" –"}
 details.addorg[open] > summary{margin-bottom:4px}
+
+/* light / dark switch */
+.theme-toggle{color:var(--muted); gap:5px}
+.theme-toggle:hover{color:var(--ink)}
+@media (max-width:560px){ .theme-toggle span{display:none} }
+
+/* sign-in provider buttons */
+.providers{display:flex; flex-direction:column; gap:8px}
+.btn.provider{gap:10px}

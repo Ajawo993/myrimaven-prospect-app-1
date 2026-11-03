@@ -3,6 +3,9 @@
 import { suggest, parseJSON, normSuggest } from "@/lib/prompts";
 import { askClaude, jobPostings, requireUser, readJson, errorResponse } from "@/lib/server";
 
+/* Claude can take up to a minute; let Vercel wait that long */
+export const maxDuration = 60;
+
 export async function POST(request) {
   try {
     await requireUser(request);

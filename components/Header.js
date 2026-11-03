@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProspects } from "./ProspectsProvider";
 import { useAuth } from "./AuthProvider";
+import ThemeToggle from "./ThemeToggle";
 
 const TABS = [["discover", "Discover"], ["prospects", "Prospects"], ["learnings", "Learnings"]];
 const STORE_LABEL = { loading: "Connecting…", cloud: "Saved to your account", local: "Saved in this browser", memory: "Not saving" };
@@ -51,6 +52,7 @@ export default function Header() {
             )}
           </>
         ) : null}
+        <ThemeToggle />
       </div>
     </header>
   );
