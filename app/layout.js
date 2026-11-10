@@ -8,6 +8,8 @@ const THEME_SCRIPT = `try{var t=localStorage.getItem("myrimaven-theme");if(t==="
 export const metadata = {
   title: { default: "Myrimaven Prospect Desk", template: "%s · Myrimaven Prospect Desk" },
   description: "Find, rate and qualify organizational prospects for Myrimaven, and learn from every outreach.",
+  /* the name under the icon when saved to an iPhone home screen (icons: app/icon.png, app/apple-icon.png) */
+  appleWebApp: { capable: true, title: "Prospect Desk", statusBarStyle: "default" },
 };
 
 export const viewport = {
