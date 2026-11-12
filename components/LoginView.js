@@ -48,6 +48,9 @@ function friendly(error, providerName) {
   if (m.includes("password") && m.includes("character")) return "Use a password with at least 8 characters.";
   if (m.includes("provider is not enabled") || m.includes("unsupported provider")) return `${providerName || "That"} sign-in isn't turned on in Supabase yet.`;
   if (m.includes("signups not allowed") || m.includes("signup is disabled")) return "New accounts are turned off for this app.";
+  if (m.includes("email address not authorized")) return "The app can't email that address yet. Its email service only sends to the app's own team until a custom email sender is set up in Supabase.";
+  if (m.includes("different from the old password")) return "Choose a password you haven't used for this account before.";
+  if (m.includes("session missing") || m.includes("session not found")) return "This reset link has expired or was already used. Request a new one.";
   if (m.includes("failed to fetch") || m.includes("network") || m.includes("load failed")) return "Couldn't reach Supabase. Check that NEXT_PUBLIC_SUPABASE_URL in Vercel is your Project URL, then redeploy.";
   if (m.includes("did not match the expected pattern") || m.includes("invalid header") || m.includes("invalid api key")) {
     return "Supabase rejected the app's settings. In Vercel, re-enter NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY with no spaces or quotes, then redeploy.";
@@ -59,21 +62,41 @@ const TITLES = {
   signin: "Sign in",
   signup: "Create an account",
   link: "Email me a sign-in link",
+  reset: "Reset your password",
+  newpass: "Choose a new password",
 };
+
+/* The reset email links back to /login?reset=1 */
+const resetInUrl = () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("reset") === "1";
+
+/* Supabase puts an error in the address when a reset link is expired or already used */
+const linkErrorInUrl = () => typeof window !== "undefined" && /error_code=|error=access_denied/.test(window.location.hash + window.location.search);
 
 export default function LoginView() {
   const router = useRouter();
   const { status, configured } = useAuth();
-  const [mode, setMode] = useState("signin"); // signin | signup | link
+  const [mode, setMode] = useState("signin"); // signin | signup | link | reset | newpass
+  const [confirm, setConfirm] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(""); // "" | "email" | a provider id
   const [enabled, setEnabled] = useState(null); // which providers Supabase has switched on; null = unknown
   const [msg, setMsg] = useState({ kind: "", text: "" });
 
+  /* Arriving from a password-reset email: show the new-password form instead of moving on */
   useEffect(() => {
-    if (status === "signedIn") router.replace(nextPath());
-  }, [status, router]);
+    if (!resetInUrl()) return;
+    if (linkErrorInUrl()) {
+      setMode("reset");
+      setMsg({ kind: "err", text: "This reset link has expired or was already used. Enter your email to get a new one." });
+    } else {
+      setMode("newpass");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "signedIn" && mode !== "newpass" && !resetInUrl()) router.replace(nextPath());
+  }, [status, router, mode]);
 
   useEffect(() => {
     let alive = true;
@@ -84,6 +107,33 @@ export default function LoginView() {
   function switchMode(m) {
     setMode(m);
     setMsg({ kind: "", text: "" });
+    if (resetInUrl() && m !== "newpass") window.history.replaceState(null, "", "/login");
+  }
+
+  /* Step 1: email a reset link. Supabase sends it; the link comes back here with ?reset=1 */
+  async function onReset(addr) {
+    const { error } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo: `${window.location.origin}/login?reset=1` });
+    if (error) { setMsg({ kind: "err", text: friendly(error) }); return; }
+    /* Same message whether or not the account exists, so the form can't be used to check who has one */
+    setMsg({ kind: "ok", text: `If ${addr} has an account, we've sent it a link to reset the password. Open it on this device.` });
+  }
+
+  /* Step 2: the link signed them in for this one purpose; save the new password to Supabase */
+  async function onNewPassword(e) {
+    e.preventDefault();
+    if (!supabase) return;
+    if (password.length < 8) { setMsg({ kind: "err", text: "Use a password with at least 8 characters." }); return; }
+    if (password !== confirm) { setMsg({ kind: "err", text: "The two passwords don't match." }); return; }
+    setBusy("email");
+    setMsg({ kind: "", text: "" });
+    const { error } = await supabase.auth.updateUser({ password });
+    setBusy("");
+    if (error) { setMsg({ kind: "err", text: friendly(error) }); return; }
+    setPassword("");
+    setConfirm("");
+    setMsg({ kind: "ok", text: "Password changed. Taking you to the app…" });
+    window.history.replaceState(null, "", "/login");
+    setTimeout(() => router.replace("/discover"), 1200);
   }
 
   async function onProvider(p) {
@@ -106,7 +156,7 @@ export default function LoginView() {
     if (!supabase) return;
     const addr = email.trim();
     if (!addr) { setMsg({ kind: "err", text: "Enter your email address." }); return; }
-    if (mode !== "link" && password.length < 8) { setMsg({ kind: "err", text: "Use a password with at least 8 characters." }); return; }
+    if (mode !== "link" && mode !== "reset" && password.length < 8) { setMsg({ kind: "err", text: "Use a password with at least 8 characters." }); return; }
     setBusy("email");
     setMsg({ kind: "", text: "" });
     const back = `${window.location.origin}/login?next=${encodeURIComponent(nextPath())}`;
@@ -122,6 +172,8 @@ export default function LoginView() {
           setMsg({ kind: "ok", text: `Check your email. We sent a confirmation link to ${addr}. Open it to finish creating your account.` });
           setPassword("");
         }
+      } else if (mode === "reset") {
+        await onReset(addr);
       } else {
         const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: back, shouldCreateUser: false } });
         if (error && !String(error.message || "").toLowerCase().includes("signups not allowed")) setMsg({ kind: "err", text: friendly(error) });
@@ -165,7 +217,7 @@ export default function LoginView() {
           </div>
         ) : null}
 
-        {mode !== "link" && providers.length ? (
+        {mode !== "link" && mode !== "reset" && mode !== "newpass" && providers.length ? (
           <>
             <div className="providers">
               {providers.map((p) => (
@@ -179,11 +231,31 @@ export default function LoginView() {
           </>
         ) : null}
 
+        {mode === "newpass" ? (
+          status === "signedOut" ? (
+            <p className="auth-msg err" role="alert">
+              This reset link has expired or was already used.{" "}
+              <button type="button" className="btn ghost small" onClick={() => switchMode("reset")}>Send a new one</button>
+            </p>
+          ) : (
+            <form className="stack" onSubmit={onNewPassword} noValidate>
+              <label className="f">New password
+                <input type="password" id="new-password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" required />
+              </label>
+              <label className="f">Type it again
+                <input type="password" id="confirm-password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+              </label>
+              <button className="btn primary block" disabled={!configured || !!busy || status !== "signedIn"}>
+                {busy === "email" ? <span className="dots">Saving</span> : status === "loading" ? "Checking your link…" : "Save new password"}
+              </button>
+            </form>
+          )
+        ) : (
         <form className="stack" onSubmit={onEmail} noValidate>
           <label className="f">Email
             <input type="email" id="auth-email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
           </label>
-          {mode !== "link" ? (
+          {mode !== "link" && mode !== "reset" ? (
             <label className="f">Password
               <input
                 type="password"
@@ -195,24 +267,30 @@ export default function LoginView() {
                 required
               />
             </label>
+          ) : mode === "reset" ? (
+            <p className="note">We&apos;ll email you a link. Open it and you can choose a new password.</p>
           ) : (
             <p className="note">We&apos;ll email you a link that signs you in. No password needed.</p>
           )}
           <button className="btn primary block" disabled={disabled}>
-            {busy === "email" ? <span className="dots">Working</span> : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Email me a link"}
+            {busy === "email" ? <span className="dots">Working</span> : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : mode === "reset" ? "Email me a reset link" : "Email me a link"}
           </button>
         </form>
+        )}
 
         {msg.text ? <p className={`auth-msg ${msg.kind}`} role={msg.kind === "err" ? "alert" : "status"}>{msg.text}</p> : null}
 
         <div className="auth-links">
           {mode === "signin" ? (
             <>
-              <button type="button" className="btn ghost small" onClick={() => switchMode("link")}>Forgot your password? Email me a sign-in link</button>
+              <button type="button" className="btn ghost small" onClick={() => switchMode("reset")}>Forgot your password?</button>
               <span>New here? <button type="button" className="btn ghost small" onClick={() => switchMode("signup")}>Create an account</button></span>
             </>
-          ) : (
+          ) : mode === "newpass" ? null : (
             <span>
+              {mode === "reset" ? (
+                <><button type="button" className="btn ghost small" onClick={() => switchMode("link")}>Email me a sign-in link instead</button><br /></>
+              ) : null}
               {mode === "signup" ? "Already have an account?" : "Remembered it?"}{" "}
               <button type="button" className="btn ghost small" onClick={() => switchMode("signin")}>Sign in</button>
             </span>
