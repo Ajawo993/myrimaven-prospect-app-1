@@ -5,7 +5,7 @@
    Signed in: prospects come from Supabase. Sign-in not set up: from this browser. */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { loadProspects, saveProspect, deleteProspect, loadOrganizations, resetWorkspace, loadSampleData } from "@/lib/storage";
+import { loadProspects, saveProspect, deleteProspect, loadOrganizations, resetWorkspace, loadSampleData, removeSampleData } from "@/lib/storage";
 import { fetchStatus } from "@/lib/api";
 import { buildExamples, upgrade } from "@/lib/prospect";
 import { CATALOG } from "@/lib/catalog";
@@ -129,6 +129,23 @@ export default function ProspectsProvider({ children }) {
     }
   }, [toast]);
 
+  /* Start fresh: take the sample prospects away and keep the user's own */
+  const removeSample = useCallback(async () => {
+    if (mode !== "cloud") {
+      Object.values(ref.current).filter((p) => p.example).forEach((p) => remove(p.id));
+      toast("Examples removed. You're starting fresh.");
+      return;
+    }
+    try {
+      const n = await removeSampleData();
+      setReloadKey((k) => k + 1);
+      const own = Object.keys(ref.current).filter((id) => !id.startsWith("sp-")).length;
+      toast(own ? `Removed ${n} sample prospects. The ${own} you added are still here.` : `Removed ${n} sample prospects. You're starting fresh.`);
+    } catch {
+      toast("Couldn't remove the sample prospects. Check your connection and try again.");
+    }
+  }, [mode, remove, toast]);
+
   const value = useMemo(() => ({
     prospects,
     list: Object.values(prospects),
@@ -144,8 +161,9 @@ export default function ProspectsProvider({ children }) {
     loadExamples,
     resetSample,
     addSample,
+    removeSample,
     toast,
-  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, resetSample, addSample, toast]);
+  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, resetSample, addSample, removeSample, toast]);
 
   return (
     <ProspectsContext.Provider value={value}>

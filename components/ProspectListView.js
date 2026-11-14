@@ -49,17 +49,20 @@ function CopyFromBrowser({ list, save, toast }) {
 }
 
 export default function ProspectListView() {
-  const { list, mode, save, clearAll, loadExamples, resetSample, addSample, toast } = useProspects();
+  const { list, mode, save, clearAll, loadExamples, addSample, removeSample, toast } = useProspects();
   const [loadingSample, setLoadingSample] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [resetting, setResetting] = useState(false);
+  const [confirmFresh, setConfirmFresh] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("fit");
   const [confirmClear, setConfirmClear] = useState(false);
 
   if (mode === "loading") return <p className="muted">Loading your prospects…</p>;
 
-  const hasSample = mode === "cloud" ? list.some((p) => p.id.startsWith("sp-")) : list.some((p) => p.example);
+  const isSample = (p) => (mode === "cloud" ? p.id.startsWith("sp-") : !!p.example);
+  const sampleCount = list.filter(isSample).length;
+  const hasSample = sampleCount > 0;
+  const ownCount = list.length - sampleCount;
   const onLoadSample = async () => {
     if (mode !== "cloud") { loadExamples(); return; }
     setLoadingSample(true);
@@ -78,18 +81,19 @@ export default function ProspectListView() {
               {loadingSample ? <span className="dots">Loading</span> : mode === "cloud" ? "Load sample prospects" : "Load 3 examples"}
             </button>
           ) : null}
-          {mode === "cloud" && hasSample ? (confirmReset ? (
+          {hasSample ? (confirmFresh ? (
             <span className="confirm">
-              Replace all your prospects with fresh sample data?
-              <button className="btn small danger" disabled={resetting} onClick={async () => { setResetting(true); await resetSample(); setResetting(false); setConfirmReset(false); }}>
-                {resetting ? <span className="dots">Resetting</span> : "Reset"}
+              Remove the {sampleCount} sample prospects?{ownCount ? ` The ${ownCount} you added stay.` : ""}
+              <button className="btn small danger" disabled={clearing} onClick={async () => { setClearing(true); await removeSample(); setClearing(false); setConfirmFresh(false); }}>
+                {clearing ? <span className="dots">Removing</span> : "Remove samples"}
               </button>
-              <button className="btn small" onClick={() => setConfirmReset(false)}>Keep</button>
+              <button className="btn small" onClick={() => setConfirmFresh(false)}>Keep</button>
             </span>
           ) : (
-            <button className="btn ghost small" onClick={() => setConfirmReset(true)}>Reset sample data</button>
+            <button className="btn ghost small" onClick={() => setConfirmFresh(true)}
+              title="Removes the sample prospects so you can add your own. You can load them again any time.">Start fresh</button>
           )) : null}
-          {list.length && mode !== "cloud" ? (confirmClear ? (
+          {list.length && mode !== "cloud" && !hasSample ? (confirmClear ? (
             <span className="confirm">
               Remove all prospects?
               <button className="btn small danger" onClick={() => { clearAll(); setConfirmClear(false); toast("All prospects removed."); }}>Remove all</button>
@@ -111,9 +115,9 @@ export default function ProspectListView() {
       <>
         {head}
         <div className="panel empty">
-          <h2>No prospects yet</h2>
+          <h2>A fresh start</h2>
           <p>{mode === "cloud"
-            ? "Save an organization from Discover when it looks worth investigating. To see how the app looks after a few weeks of outreach, load the 40 sample prospects."
+            ? "Save an organization from Discover when it looks worth investigating. Or, to see how the app looks after a few weeks of outreach, load the 40 sample prospects. You can remove them again with Start fresh."
             : "Save an organization from Discover when it looks worth investigating. To see how a qualified prospect looks, load three worked examples."}</p>
           <div className="row" style={{ justifyContent: "center" }}>
             <button className="btn primary" disabled={loadingSample} onClick={onLoadSample}>
