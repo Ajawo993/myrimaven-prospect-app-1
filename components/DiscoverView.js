@@ -30,7 +30,7 @@ export default function DiscoverView() {
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const [preview, setPreview] = useState(null);
   const [sug, setSug] = useState({ busy: false, err: "", items: [] });
-  const [ana, setAna] = useState({ busy: false, err: "", step: "" });
+  const [ana, setAna] = useState({ busy: false, err: "", step: "", from: null });
   const sugCtl = useRef(null);
   const anaCtl = useRef(null);
 
@@ -107,14 +107,16 @@ export default function DiscoverView() {
 
   const outsideCount = catalog.filter((c) => c.outside).length;
 
-  async function runSuggest() {
+  async function runSuggest(query, region) {
     if (!aiOn) return;
+    const sq = typeof query === "string" ? query : form.sq;
+    const sr = typeof region === "string" ? region : form.sr;
     if (sugCtl.current) sugCtl.current.abort();
     const ctl = new AbortController();
     sugCtl.current = ctl;
     setSug({ busy: true, err: "", items: [] });
     try {
-      const items = await aiSuggest(form.sq, form.sr, ctl.signal);
+      const items = await aiSuggest(sq, sr, ctl.signal);
       setSug({ busy: false, err: items.length ? "" : "No suggestions came back. Try describing the organizations differently.", items });
     } catch (e) {
       const [msg, off] = aiErr(e);
@@ -123,20 +125,21 @@ export default function DiscoverView() {
     }
   }
 
-  async function runAnalyze(name, website, notes, signals, region) {
+  /* from = index of the suggestion that started it (its card shows the progress), or null for the Analyze panel */
+  async function runAnalyze(name, website, notes, signals, region, from = null) {
     if (!aiOn) return;
     if (anaCtl.current) anaCtl.current.abort();
     const ctl = new AbortController();
     anaCtl.current = ctl;
-    setAna({ busy: true, err: "", step: "" });
+    setAna({ busy: true, err: "", step: "", from });
     let jobs = null;
     try {
       if (server.jobs) {
-        setAna({ busy: true, err: "", step: "Checking job postings" });
+        setAna({ busy: true, err: "", step: "Checking job postings", from });
         try { jobs = await fetchJobs(name, region); } catch { jobs = null; }
         if (ctl.signal.aborted) throw { code: "cancelled" };
       }
-      setAna({ busy: true, err: "", step: "Analyzing" });
+      setAna({ busy: true, err: "", step: "Analyzing", from });
       const a = await aiAnalysis(name, website, [notes, jobsText(jobs)].filter(Boolean).join("\n\n"), ctl.signal);
       if (jobs) a.evidence = [jobsEvidence(jobs), ...(a.evidence || [])];
       openPreview({
@@ -144,11 +147,11 @@ export default function DiscoverView() {
         analysis: a,
         by: "ai",
       });
-      setAna({ busy: false, err: "", step: "" });
+      setAna({ busy: false, err: "", step: "", from: null });
     } catch (e) {
       const [msg, off] = aiErr(e);
       if (off) setAiOff(true);
-      setAna({ busy: false, err: msg, step: "" });
+      setAna({ busy: false, err: msg, step: "", from });
     }
   }
 
@@ -158,11 +161,18 @@ export default function DiscoverView() {
     runAnalyze(name, form.aw, form.ax, null, form.ar);
   }
 
-  function onAnalyzeSuggestion(x) {
+  function onAnalyzeSuggestion(x, i) {
     const region = x.region || form.sr || "";
     const notes = `Suggested because: ${x.rationale}\nHow to check: ${x.verify}\nSector: ${x.sector}. Region: ${x.region}.`;
     setForm((f) => ({ ...f, an: x.name, aw: "", ar: region, ax: notes }));
-    runAnalyze(x.name, "", notes, x.signals, region);
+    runAnalyze(x.name, "", notes, x.signals, region, i);
+  }
+
+  /* A suggestion that's a type of organization: ask for named examples of that type */
+  function onFindExamples(x) {
+    const region = x.region || form.sr || "";
+    setForm((f) => ({ ...f, sq: x.name, sr: region }));
+    runSuggest(x.name, region);
   }
 
   function onSaveManual() {
@@ -279,10 +289,25 @@ export default function DiscoverView() {
                     <span>{x.rationale}</span>
                     {x.postings ? <span className="hire">Job postings, last 60 days: {x.postings.count} ({x.postings.peopleRoles} HR or training)</span> : null}
                     {x.verify ? <span className="verify">Check: {x.verify}</span> : null}
-                    <div>
-                      <button className="btn small" onClick={() => onAnalyzeSuggestion(x)} disabled={x.kind === "type" || ana.busy}
-                        title={x.kind === "type" ? "Find a specific organization of this type first" : undefined}>Analyze this one</button>
-                    </div>
+                    {x.kind === "type" ? (
+                      <div className="row">
+                        <button className="btn small" onClick={() => onFindExamples(x)} disabled={sug.busy}>Find examples</button>
+                        <span className="note">This is a kind of organization, not a specific one. Find named examples to analyze.</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <button className="btn small" onClick={() => onAnalyzeSuggestion(x, i)} disabled={ana.busy}>
+                          {ana.busy && ana.from === i ? <span className="dots">{ana.step || "Analyzing"}</span> : "Analyze this one"}
+                        </button>
+                      </div>
+                    )}
+                    {ana.busy && ana.from === i ? (
+                      <p className="status-line">
+                        <span>This can take up to a minute.</span>
+                        <button className="btn ghost small" onClick={() => anaCtl.current && anaCtl.current.abort()}>Stop</button>
+                      </p>
+                    ) : null}
+                    {!ana.busy && ana.err && ana.from === i ? <p className="status-line err">{ana.err}</p> : null}
                   </div>
                 ))}
               </div>
@@ -315,14 +340,14 @@ export default function DiscoverView() {
               {aiOn ? <button className="btn primary" onClick={onAnalyze} disabled={ana.busy}>Analyze</button> : null}
               <button className={aiOn ? "btn" : "btn primary"} onClick={onSaveManual}>{aiOn ? "Save without AI" : "Save as prospect"}</button>
             </div>
-            {ana.busy ? (
+            {ana.busy && ana.from == null ? (
               <p className="status-line">
                 <span className="dots">{ana.step || "Thinking"}</span>
                 <span>This can take up to a minute.</span>
                 <button className="btn ghost small" onClick={() => anaCtl.current && anaCtl.current.abort()}>Stop</button>
               </p>
             ) : null}
-            {ana.err ? <p className="status-line err">{ana.err}</p> : null}
+            {ana.err && ana.from == null ? <p className="status-line err">{ana.err}</p> : null}
           </details>
         </aside>
       </div>
