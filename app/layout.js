@@ -2,6 +2,7 @@ import "./globals.css";
 import AuthProvider, { AuthGate } from "@/components/AuthProvider";
 import ProspectsProvider from "@/components/ProspectsProvider";
 import Header from "@/components/Header";
+import Welcome from "@/components/Welcome";
 
 const THEME_SCRIPT = `try{var t=localStorage.getItem("myrimaven-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
@@ -36,7 +37,7 @@ export default function RootLayout({ children }) {
           <ProspectsProvider>
             <Header />
             <main>
-              <AuthGate>{children}</AuthGate>
+              <AuthGate><Welcome />{children}</AuthGate>
             </main>
           </ProspectsProvider>
         </AuthProvider>

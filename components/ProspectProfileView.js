@@ -167,7 +167,9 @@ export default function ProspectProfileView() {
       setJobs({ busy: false, err: "" });
       toast(msg);
     } catch (e) {
-      setJobs({ busy: false, err: e && e.code === "not_configured" ? "Job postings aren't connected in this version." : "Couldn't check job postings. Try again." });
+      setJobs({ busy: false, err: e && e.code === "not_configured" ? "Job postings aren't connected in this version."
+        : e && e.code === "daily_limit" ? `You've reached today's limit for job-posting checks. It resets within 24 hours.`
+        : "The job-postings service isn't answering right now, so nothing was changed. Try again later; the rest of this prospect still works." });
     }
   }
 

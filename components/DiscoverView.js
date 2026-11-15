@@ -136,7 +136,10 @@ export default function DiscoverView() {
     try {
       if (server.jobs) {
         setAna({ busy: true, err: "", step: "Checking job postings", from });
-        try { jobs = await fetchJobs(name, region); } catch { jobs = null; }
+        try { jobs = await fetchJobs(name, region); } catch (je) {
+          jobs = null;
+          if (je && je.code !== "not_configured") toast("Couldn't check job postings this time, so the analysis goes ahead without them.");
+        }
         if (ctl.signal.aborted) throw { code: "cancelled" };
       }
       setAna({ busy: true, err: "", step: "Analyzing", from });

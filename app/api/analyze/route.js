@@ -1,15 +1,16 @@
 /* POST /api/analyze  {name, website?, notes?}  ->  "Why is this a prospect?" assessment */
 import { analysis, parseJSON, normAnalysis } from "@/lib/prompts";
-import { askAI, requireUser, readJson, errorResponse } from "@/lib/server";
+import { askAI, requireUser, useQuota, readJson, errorResponse } from "@/lib/server";
 
 /* The AI can take up to a minute; let Vercel wait that long */
 export const maxDuration = 60;
 
 export async function POST(request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
+    await useQuota(user, "ai");
   } catch (e) {
-    return errorResponse(e);
+    return errorResponse(e, "api/analyze");
   }
   const b = await readJson(request);
   const name = String(b.name || "").trim().slice(0, 200);
@@ -17,9 +18,12 @@ export async function POST(request) {
   try {
     const text = await askAI(analysis(name, String(b.website || "").slice(0, 200), String(b.notes || "").slice(0, 8000)), 2500);
     const data = parseJSON(text);
-    if (!data) return Response.json({ error: "The AI answer came back in an unexpected shape" }, { status: 502 });
+    if (!data) {
+      console.error(`[api/analyze] 502 the AI answer wasn't valid JSON | ${String(text).slice(0, 300)}`);
+      return Response.json({ error: "The AI answer came back in an unexpected shape" }, { status: 502 });
+    }
     return Response.json(normAnalysis(data));
   } catch (e) {
-    return errorResponse(e);
+    return errorResponse(e, "api/analyze");
   }
 }

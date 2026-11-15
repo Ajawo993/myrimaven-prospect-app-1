@@ -1,11 +1,12 @@
 /* GET /api/jobs?company=...&where=...  ->  recent job postings for one employer (Adzuna) */
-import { jobPostings, requireUser, errorResponse } from "@/lib/server";
+import { jobPostings, requireUser, useQuota, errorResponse } from "@/lib/server";
 
 export async function GET(request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
+    await useQuota(user, "jobs");
   } catch (e) {
-    return errorResponse(e);
+    return errorResponse(e, "api/jobs");
   }
   const q = new URL(request.url).searchParams;
   const company = String(q.get("company") || "").trim().slice(0, 160);
@@ -15,6 +16,6 @@ export async function GET(request) {
     if (!data) return Response.json({ error: "Job postings are not configured" }, { status: 501 });
     return Response.json(data);
   } catch (e) {
-    return errorResponse(e);
+    return errorResponse(e, "api/jobs");
   }
 }
