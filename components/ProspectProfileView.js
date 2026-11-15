@@ -12,7 +12,7 @@ import AnalysisBlock from "./AnalysisBlock";
 import { SIGNALS, STATUSES, AUTH, CONNECTIONS, CONN_LABEL, CHANNELS, OUTCOMES, REASONS, REASON_FIT } from "@/lib/constants";
 import { CRIT, fitOf } from "@/lib/fit";
 import { clone, cls, fmtDate, todayISO, uid } from "@/lib/format";
-import { jobsText, jobsEvidence } from "@/lib/prospect";
+import { jobsText, jobsEvidence, jobsCount } from "@/lib/prospect";
 import { aiAnalysis, fetchJobs, aiErr } from "@/lib/api";
 
 export default function ProspectProfileView() {
@@ -157,10 +157,10 @@ export default function ProspectProfileView() {
       next.jobs = j;
       next.analysis.evidence = next.analysis.evidence.filter((e) => !/^Adzuna/.test(e.source));
       next.analysis.evidence.unshift(jobsEvidence(j));
-      let msg = `Found ${j.count} postings.`;
+      let msg = `Found ${jobsCount(j)} postings.`;
       if (j.count >= 5 && next.fit.hiring !== "yes") {
         next.fit.hiring = "yes";
-        next.fitWhy.hiring = `${j.count} postings on Adzuna in the last ${j.searched.days} days.`;
+        next.fitWhy.hiring = `${jobsCount(j)} postings on Adzuna in the last ${j.searched.days} days.`;
         msg += ' Set "Active hiring" to Yes.';
       }
       save(next);
@@ -240,7 +240,7 @@ export default function ProspectProfileView() {
               {p.jobs ? (
                 <div className="postings">
                   <p>
-                    <b className="mono">{p.jobs.count}</b> postings in the last {p.jobs.searched.days} days, <b className="mono">{p.jobs.peopleRoles}</b> in HR, training or talent roles.{" "}
+                    <b className="mono">{jobsCount(p.jobs)}</b> postings in the last {p.jobs.searched.days} days, <b className="mono">{p.jobs.peopleRoles}</b> in HR, training or talent roles.{" "}
                     <span className="note">Adzuna, checked {fmtDate(p.jobs.checkedAt)}.</span>
                   </p>
                   {p.jobs.sample.length ? (
