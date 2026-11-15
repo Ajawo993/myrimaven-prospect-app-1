@@ -26,7 +26,7 @@ export default function ProspectProfileView() {
   const [confirmDel, setConfirmDel] = useState(false);
 
   useEffect(() => {
-    if (p) document.title = `${p.name} · Myrimaven Prospect Desk`;
+    if (p) document.title = `${p.name} · Prospect Desk`;
   }, [p && p.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (mode === "loading") return <p className="muted">Loading…</p>;
@@ -110,11 +110,11 @@ export default function ProspectProfileView() {
     setRerun({ busy: true, err: "", ctl });
     const notes = [
       p.summary && "Summary: " + p.summary,
-      p.analysis.evidence.length && "Evidence so far:\n" + p.analysis.evidence.map((e) => `- ${e.text} (${e.source}${e.checked ? ", checked by Joan" : ""})`).join("\n"),
+      p.analysis.evidence.length && "Evidence so far:\n" + p.analysis.evidence.map((e) => `- ${e.text} (${e.source}${e.checked ? ", checked by the client" : ""})`).join("\n"),
       p.contacts.length && "Contacts:\n" + p.contacts.map((c) => `- ${c.role} (${c.authority}, ${c.connection})`).join("\n"),
       p.outreach.length && "Outreach so far:\n" + p.outreach.map((o) => `- ${o.date} ${o.channel}: ${o.outcome}${o.reason ? " (" + o.reason + ")" : ""}. ${o.learned}`).join("\n"),
       p.jobs && jobsText(p.jobs),
-      p.notes && "Joan's notes: " + p.notes,
+      p.notes && "The client's notes: " + p.notes,
     ].filter(Boolean).join("\n\n");
     try {
       const a = await aiAnalysis(p.name, p.website, notes, ctl.signal);
@@ -129,7 +129,7 @@ export default function ProspectProfileView() {
         evidence: keepEv.concat((a.evidence || []).filter((e) => !seen.has(e.text.toLowerCase())).map((e) => ({ ...e, checked: false }))),
         unknowns: keepUn.concat((a.unknowns || []).filter((t) => !keepUn.some((u) => u.text.toLowerCase() === t.toLowerCase())).map((t) => ({ text: t, done: false }))),
       };
-      /* AI only fills criteria Joan hasn't decided yet */
+      /* AI only fills criteria the client hasn't decided yet */
       Object.entries(a.fit || {}).forEach(([k, v]) => {
         if (next.fit[k] === "unknown" && v !== "unknown") {
           next.fit[k] = v;
@@ -219,7 +219,7 @@ export default function ProspectProfileView() {
               by={p.analysis.generatedBy}
               onToggleEvidence={(i, v) => edit((n) => { n.analysis.evidence[i].checked = v; })}
               onToggleUnknown={(i, v) => edit((n) => { n.analysis.unknowns[i].done = v; })}
-              onAddEvidence={(text, source) => text && edit((n) => { n.analysis.evidence.push({ text, source: source || "Added by Joan", checked: true, mine: true }); })}
+              onAddEvidence={(text, source) => text && edit((n) => { n.analysis.evidence.push({ text, source: source || "Added by you", checked: true, mine: true }); })}
               onAddUnknown={(text) => text && edit((n) => { n.analysis.unknowns.push({ text, done: false, mine: true }); })}
             />
           </section>

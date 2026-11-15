@@ -1,4 +1,4 @@
--- Myrimaven Prospect Desk: database tables
+-- Prospect Desk: database tables
 -- Paste this whole file into Supabase → SQL Editor → New query, and click Run.
 -- It's safe to run more than once.
 --

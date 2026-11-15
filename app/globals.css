@@ -329,3 +329,7 @@ details.addorg[open] > summary{margin-bottom:4px}
 /* sign-in provider buttons */
 .providers{display:flex; flex-direction:column; gap:8px}
 .btn.provider{gap:10px}
+
+/* logo mark beside the name in the top bar */
+.brand{align-items:center}
+.brand-mark{border-radius:7px; flex:0 0 auto; display:block}

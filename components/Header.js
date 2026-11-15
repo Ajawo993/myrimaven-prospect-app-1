@@ -89,7 +89,7 @@ export default function Header() {
     <header className="bar">
       <div className="bar-in">
         <Link href="/discover" className="brand" style={{ color: "inherit", textDecoration: "none" }}>
-          <b>Myrimaven</b><span>Prospect Desk</span>
+          <img src="/icon-192.png" alt="" width="26" height="26" className="brand-mark" /><b>Prospect Desk</b>
         </Link>
         {showNav ? (
           <>

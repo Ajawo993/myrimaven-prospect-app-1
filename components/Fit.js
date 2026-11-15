@@ -11,7 +11,7 @@ export function HowRate() {
     <details className="howrate">
       <summary>How the fit rating works</summary>
       <p>
-        The rating counts which of Joan&apos;s eight criteria are met. It is not a prediction. <b>Strong</b> = 5 or more met.{" "}
+        The rating counts which of the eight fit criteria are met. It is not a prediction. <b>Strong</b> = 5 or more met.{" "}
         <b>Moderate</b> = 3 or 4 met. <b>Weak</b> = 2 or fewer, or a &ldquo;No&rdquo; on a must-have: serves adults, has a career
         alignment problem, open to outside tools. Every criterion can be changed on the prospect, and contacts and outreach update
         it as you go.

@@ -6,8 +6,8 @@ import Header from "@/components/Header";
 const THEME_SCRIPT = `try{var t=localStorage.getItem("myrimaven-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
 export const metadata = {
-  title: { default: "Myrimaven Prospect Desk", template: "%s · Myrimaven Prospect Desk" },
-  description: "Find, rate and qualify organizational prospects for Myrimaven, and learn from every outreach.",
+  title: { default: "Prospect Desk", template: "%s · Prospect Desk" },
+  description: "Find, rate and qualify organizational prospects, and learn from every outreach.",
   /* the name under the icon when saved to an iPhone home screen (icons: app/icon.png, app/apple-icon.png) */
   appleWebApp: { capable: true, title: "Prospect Desk", statusBarStyle: "default" },
 };

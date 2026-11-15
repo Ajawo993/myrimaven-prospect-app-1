@@ -191,9 +191,9 @@ export default function LoginView() {
   return (
     <div className="auth-wrap">
       <section className="auth-intro">
-        <p className="eyebrow">Myrimaven Prospect Desk</p>
+        <p className="eyebrow">Prospect Desk</p>
         <h1>Sign in to pick up where you left off</h1>
-        <p className="lede">Find organizations with a real reason to talk to Myrimaven, qualify them, and keep what every conversation teaches you in one place.</p>
+        <p className="lede">Find organizations with a real reason to talk to your company, qualify them, and keep what every conversation teaches you in one place.</p>
         <ol className="steps">
           <li><b>Find</b> an organization showing a signal</li>
           <li><b>Qualify</b> the problem and the right contact</li>

@@ -7,7 +7,7 @@ import { FitCriteria } from "./Fit";
 import { SIGNALS } from "@/lib/constants";
 import AnalysisBlock from "./AnalysisBlock";
 
-/* Side panel answering "Why might this organization need Myrimaven?" before saving */
+/* Side panel answering "Why might this organization need your company?" before saving */
 export default function PreviewSheet({ preview, savedId, onSave, onClose, onLeave }) {
   const primary = useRef(null);
   const closeRef = useRef(onClose);
@@ -33,7 +33,7 @@ export default function PreviewSheet({ preview, savedId, onSave, onClose, onLeav
       <aside className="sheet" role="dialog" aria-modal="true" aria-label={org.name}>
         <div className="sheet-head">
           <div>
-            <p className="eyebrow">Why might this organization need Myrimaven?</p>
+            <p className="eyebrow">Why might this organization need your company?</p>
             <h2 style={{ marginTop: 4 }}>{org.name}</h2>
             <p className="note" style={{ marginTop: 4 }}>{[org.sector, org.size, org.region].filter(Boolean).join(" · ")}</p>
           </div>
@@ -47,7 +47,7 @@ export default function PreviewSheet({ preview, savedId, onSave, onClose, onLeav
           </div>
         ) : null}
         {org.outside ? (
-          <p className="flag">Outside current focus: {(org.sector || "").startsWith("K") ? "K–12 outreach got no replies and Myrimaven is focused on adults." : "career coaches aren't a current target."}</p>
+          <p className="flag">Outside current focus: {(org.sector || "").startsWith("K") ? "K–12 outreach got no replies, and the current focus is adults." : "career coaches aren't a current target."}</p>
         ) : null}
         <div>
           <h4 style={{ marginBottom: 8 }}>Fit against your criteria</h4>

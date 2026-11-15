@@ -2,7 +2,7 @@
    Next.js serves this at /manifest.webmanifest and links it automatically. */
 export default function manifest() {
   return {
-    name: "Myrimaven Prospect Desk",
+    name: "Prospect Desk",
     short_name: "Prospect Desk",
     description: "Find, qualify and learn from organizational prospects.",
     start_url: "/discover",

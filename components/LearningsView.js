@@ -1,6 +1,6 @@
 "use client";
 
-/* /learnings — what outreach is teaching Myrimaven, including from every no */
+/* /learnings — what outreach is teaching you, including from every no */
 
 import { useProspects } from "./ProspectsProvider";
 import { STATUSES, CONNECTIONS, CONN_LABEL } from "@/lib/constants";
@@ -18,7 +18,7 @@ export default function LearningsView() {
       <p className="eyebrow">Learnings</p>
       <h1>What outreach is teaching you</h1>
       <p className="lede muted" style={{ marginTop: 10, maxWidth: "60ch" }}>
-        Every response, including no response, is evidence about who Myrimaven&apos;s customer is. This page collects it.
+        Every response, including no response, is evidence about who your customer is. This page collects it.
       </p>
     </section>
   );

@@ -319,11 +319,11 @@ export default function DiscoverView() {
             <summary>
               <h2>{aiOn ? "Analyze an organization" : "Add an organization"}</h2>
               <p className="note">{aiOn
-                ? <>Get its fit rating, why it might need Myrimaven, the evidence, and what&apos;s still unknown.{server.jobs ? " Recent job postings are pulled in first." : ""}</>
+                ? <>Get its fit rating, why it might need your company, the evidence, and what&apos;s still unknown.{server.jobs ? " Recent job postings are pulled in first." : ""}</>
                 : "Found one that isn't in the list? Save it as a prospect and fill in the fit yourself."}</p>
             </summary>
             <label className="f">Organization name
-              <input type="text" id="an" value={form.an} onChange={setField("an")} placeholder="e.g. Mount Royal University, Continuing Education" />
+              <input type="text" id="an" value={form.an} onChange={setField("an")} placeholder="e.g. Example Organization" />
             </label>
             <div className="row">
               <label className="f">Website (optional)
