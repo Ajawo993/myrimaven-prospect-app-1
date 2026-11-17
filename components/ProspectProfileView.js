@@ -8,12 +8,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useProspects } from "./ProspectsProvider";
 import { ModeBanner } from "./ProspectListView";
 import { FitPill, FitCriteria, HowRate } from "./Fit";
-import AnalysisBlock from "./AnalysisBlock";
+import AnalysisBlock, { Source } from "./AnalysisBlock";
 import { SIGNALS, STATUSES, AUTH, CONNECTIONS, CONN_LABEL, CHANNELS, OUTCOMES, REASONS, REASON_FIT } from "@/lib/constants";
 import { CRIT, fitOf } from "@/lib/fit";
 import { clone, cls, fmtDate, todayISO, uid } from "@/lib/format";
 import { jobsText, jobsEvidence, jobsCount } from "@/lib/prospect";
-import { aiAnalysis, fetchJobs, aiErr } from "@/lib/api";
+import { aiAnalysis, aiResearch, fetchJobs, aiErr } from "@/lib/api";
 
 export default function ProspectProfileView() {
   const { id } = useParams();
@@ -22,6 +22,7 @@ export default function ProspectProfileView() {
   const p = prospects[id];
 
   const [rerun, setRerun] = useState({ busy: false, err: "", ctl: null });
+  const [research, setResearch] = useState({ busy: false, err: "", ctl: null, result: null });
   const [jobs, setJobs] = useState({ busy: false, err: "" });
   const [confirmDel, setConfirmDel] = useState(false);
 
@@ -147,6 +148,68 @@ export default function ProspectProfileView() {
     }
   }
 
+  /* Research agent: Claude searches the web and checks job postings in several steps.
+     Nothing is saved until the user clicks Add to prospect. */
+  async function onResearch() {
+    if (!aiOn) return;
+    const ctl = new AbortController();
+    setResearch({ busy: true, err: "", ctl, result: null });
+    const known = [
+      p.summary && "Summary: " + p.summary,
+      p.analysis.evidence.length && "Evidence so far:\n" + p.analysis.evidence.map((e) => `- ${e.text} (${e.source})`).join("\n"),
+      p.contacts.length && "Contacts (roles only):\n" + p.contacts.map((c) => `- ${c.role} (${c.authority}, ${c.connection})`).join("\n"),
+      p.outreach.length && "Outreach so far:\n" + p.outreach.map((o) => `- ${o.date}: ${o.outcome}${o.reason ? " (" + o.reason + ")" : ""}. ${o.learned}`).join("\n"),
+      p.notes && "The client's notes: " + p.notes,
+    ].filter(Boolean).join("\n\n");
+    try {
+      const result = await aiResearch({ name: p.name, website: p.website, region: p.region, known }, ctl.signal);
+      setResearch({ busy: false, err: "", ctl: null, result });
+    } catch (e) {
+      const [msg, off] = aiErr(e);
+      if (off) setAiOff(true);
+      setResearch({ busy: false, err: e && e.code === "cancelled" ? "" : msg, ctl: null, result: null });
+    }
+  }
+
+  /* The user approved the findings: add them without touching anything they decided */
+  function applyResearch() {
+    const r = research.result;
+    const latest = get(p.id);
+    if (!r || !latest) return;
+    const a = r.analysis;
+    const next = clone(latest);
+    const changes = [];
+    const seenEv = new Set(next.analysis.evidence.map((e) => e.text.toLowerCase()));
+    const newEv = (a.evidence || []).filter((e) => !seenEv.has(e.text.toLowerCase())).map((e) => ({ ...e, checked: false }));
+    if (r.jobs) {
+      next.jobs = r.jobs;
+      const je = jobsEvidence(r.jobs);
+      if (!seenEv.has(je.text.toLowerCase())) newEv.push(je);
+    }
+    next.analysis.evidence = next.analysis.evidence.concat(newEv);
+    if (newEv.length) changes.push(`${newEv.length} evidence`);
+    const newUn = (a.unknowns || []).filter((t) => !next.analysis.unknowns.some((u) => u.text.toLowerCase() === t.toLowerCase())).map((t) => ({ text: t, done: false }));
+    next.analysis.unknowns = next.analysis.unknowns.concat(newUn);
+    if (newUn.length) changes.push(`${newUn.length} questions`);
+    ["problems", "roles", "fitConcerns"].forEach((k) => { if (!(next.analysis[k] || []).length && (a[k] || []).length) next.analysis[k] = a[k]; });
+    /* fills only fit questions still unknown: the user's answers always win */
+    let filled = 0;
+    Object.entries(a.fit || {}).forEach(([k, v]) => {
+      if (next.fit[k] === "unknown" && v !== "unknown") {
+        next.fit[k] = v;
+        next.fitWhy[k] = (a.fitWhy && a.fitWhy[k]) || "From AI research";
+        filled++;
+      }
+    });
+    if (filled) changes.push(`${filled} fit answers`);
+    if (a.summary && !next.summary) next.summary = a.summary;
+    if (a.website && !next.website) next.website = a.website;
+    if (next.analysis.generatedBy === "none") { next.analysis.generatedBy = "ai"; next.analysis.generatedAt = todayISO(); }
+    save(next);
+    setResearch({ busy: false, err: "", ctl: null, result: null });
+    toast(changes.length ? `Added ${changes.join(", ")}. Your own answers and evidence were kept.` : "Nothing new to add: the research didn't find anything you didn't already have.");
+  }
+
   async function onCheckJobs() {
     setJobs({ busy: true, err: "" });
     try {
@@ -206,11 +269,24 @@ export default function ProspectProfileView() {
           <section className="panel">
             <div className="panel-head">
               <h2>Why is this a prospect?</h2>
-              <button className="btn small" onClick={onRerun} disabled={!aiOn || rerun.busy}
-                title={!aiOn ? "AI isn't connected in this version" : "Update the assessment using your evidence, contacts and outreach"}>
-                {rerun.busy ? <span className="dots">Updating</span> : p.analysis.generatedBy === "none" ? "Assess with AI" : "Update with AI"}
-              </button>
+              <div className="row" style={{ gap: 6 }}>
+                <button className="btn small primary" onClick={onResearch} disabled={!aiOn || research.busy || rerun.busy}
+                  title={!aiOn ? "AI isn't connected in this version" : "Search the web and job postings for evidence, then review before saving"}>
+                  {research.busy ? <span className="dots">Researching</span> : "Research with AI"}
+                </button>
+                <button className="btn small" onClick={onRerun} disabled={!aiOn || rerun.busy || research.busy}
+                  title={!aiOn ? "AI isn't connected in this version" : "Update the assessment using your evidence, contacts and outreach"}>
+                  {rerun.busy ? <span className="dots">Updating</span> : p.analysis.generatedBy === "none" ? "Assess with AI" : "Update with AI"}
+                </button>
+              </div>
             </div>
+            {research.busy ? (
+              <p className="status-line">Searching the web and job postings, step by step. This can take up to a minute. <button className="btn ghost small" onClick={() => research.ctl && research.ctl.abort()}>Stop</button></p>
+            ) : null}
+            {research.err ? <p className="status-line err">{research.err}</p> : null}
+            {research.result ? (
+              <ResearchResults r={research.result} fit={p.fit} onAdd={applyResearch} onDiscard={() => setResearch({ busy: false, err: "", ctl: null, result: null })} />
+            ) : null}
             {rerun.busy ? (
               <p className="status-line">This can take up to a minute. <button className="btn ghost small" onClick={() => rerun.ctl && rerun.ctl.abort()}>Stop</button></p>
             ) : null}
@@ -425,5 +501,61 @@ export default function ProspectProfileView() {
         </div>
       </div>
     </>
+  );
+}
+
+/* What the research agent did and found, for the user to review before anything is saved */
+function ResearchResults({ r, fit, onAdd, onDiscard }) {
+  const a = r.analysis;
+  const willFill = Object.entries(a.fit || {}).filter(([k, v]) => fit[k] === "unknown" && v !== "unknown");
+  return (
+    <div className="research">
+      <h3>Research results <span className="note">· review before adding</span></h3>
+      <div>
+        <h4>What it did</h4>
+        <ol className="research-steps">
+          {r.steps.map((s, i) => (
+            <li key={i}>
+              {s.kind === "search" ? <>Searched the web for <q>{s.query}</q></>
+                : s.kind === "jobs" ? <>Checked job postings for {s.employer}: {s.count}{s.more ? "+" : ""} in the last 60 days, {s.peopleRoles} in HR or training</>
+                : s.text}
+            </li>
+          ))}
+          <li>Read {r.sources.length} pages and wrote up its findings</li>
+        </ol>
+      </div>
+      {a.summary ? <p>{a.summary}</p> : null}
+      <div>
+        <h4>Evidence found</h4>
+        <ul className="list">
+          {(a.evidence || []).length ? a.evidence.map((e, i) => (
+            <li key={i} className="ev"><div className="txt">{e.text}<Source source={e.source} /></div></li>
+          )) : <li className="note">No evidence it could link to a source.</li>}
+        </ul>
+        {r.dropped ? <p className="note">{r.dropped} claim{r.dropped === 1 ? " was" : "s were"} left out because {r.dropped === 1 ? "its link wasn't" : "their links weren't"} among the pages the search found.</p> : null}
+      </div>
+      {willFill.length ? (
+        <div>
+          <h4>Fit answers it would fill in</h4>
+          <ul className="list">
+            {willFill.map(([k, v]) => {
+              const c = CRIT.find((x) => x.k === k);
+              return <li key={k}><b>{c ? c.label : k}: {v === "yes" ? "Yes" : "No"}</b>{a.fitWhy && a.fitWhy[k] ? <span> · {a.fitWhy[k]}</span> : null}</li>;
+            })}
+          </ul>
+          <p className="note">Only questions you haven&apos;t answered yet. Your own answers stay.</p>
+        </div>
+      ) : null}
+      {(a.unknowns || []).length ? (
+        <div>
+          <h4>Questions still to answer</h4>
+          <ul className="list">{a.unknowns.map((u, i) => <li key={i}>{u}</li>)}</ul>
+        </div>
+      ) : null}
+      <div className="row">
+        <button className="btn primary" onClick={onAdd}>Add to prospect</button>
+        <button className="btn" onClick={onDiscard}>Discard</button>
+      </div>
+    </div>
   );
 }

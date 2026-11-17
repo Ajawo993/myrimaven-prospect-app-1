@@ -9,6 +9,16 @@ const LABEL = {
   none: "No assessment yet. Add evidence and unknowns as you find them.",
 };
 const needsVerify = (source) => /verify|general knowledge|^ai$/i.test(source || "");
+const isLink = (s) => /^https?:\/\//i.test(s || "");
+const host = (s) => { try { return new URL(s).hostname.replace(/^www\./, ""); } catch { return s; } };
+
+/* A source that's a web address shows as a link to that page */
+export function Source({ source, className }) {
+  if (isLink(source)) {
+    return <small className={className}><a href={source} target="_blank" rel="noopener noreferrer">{host(source)}</a></small>;
+  }
+  return <small className={className}>{source}</small>;
+}
 
 function submitAndReset(handler) {
   return (e) => {
@@ -46,7 +56,7 @@ export default function AnalysisBlock({ analysis: a, by, onToggleEvidence, onTog
               ) : null}
               <div className="txt">
                 {e.text}
-                <small className={needsVerify(e.source) && !e.checked ? "verify" : ""}>{e.source}</small>
+                <Source source={e.source} className={needsVerify(e.source) && !e.checked ? "verify" : ""} />
               </div>
             </li>
           )) : <li className="note">No evidence yet.</li>}
