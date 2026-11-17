@@ -10,7 +10,8 @@ import PreviewSheet from "./PreviewSheet";
 import { SIGNALS } from "@/lib/constants";
 import { CRIT, RANK, decodeFit, fitOf } from "@/lib/fit";
 import { newProspect, jobsText, jobsEvidence, guessSignals } from "@/lib/prospect";
-import { aiAnalysis, aiSuggest, fetchJobs, aiErr } from "@/lib/api";
+import { aiAnalysis, aiSuggest, aiFind, fetchJobs, aiErr } from "@/lib/api";
+import { Source } from "./AnalysisBlock";
 
 const RATINGS = [["all", "All fits"], ["Strong", "Strong fit"], ["Moderate", "Moderate fit"], ["Weak", "Weak fit"]];
 
@@ -30,6 +31,8 @@ export default function DiscoverView() {
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const [preview, setPreview] = useState(null);
   const [sug, setSug] = useState({ busy: false, err: "", items: [] });
+  /* the finder agent: real organizations from a web search (needs the Claude API) */
+  const [found, setFound] = useState({ busy: false, err: "", items: [], steps: [], note: "" });
   const [ana, setAna] = useState({ busy: false, err: "", step: "", from: null });
   const sugCtl = useRef(null);
   const anaCtl = useRef(null);
@@ -106,6 +109,36 @@ export default function DiscoverView() {
   }, [catalog, q, signal, rating, showOutside]);
 
   const outsideCount = catalog.filter((c) => c.outside).length;
+
+  async function runFind() {
+    if (!aiOn) return;
+    if (sugCtl.current) sugCtl.current.abort();
+    const ctl = new AbortController();
+    sugCtl.current = ctl;
+    setFound({ busy: true, err: "", items: [], steps: [], note: "" });
+    try {
+      const r = await aiFind(form.sq, form.sr, list.map((p) => p.name), ctl.signal);
+      const left = [r.unconfirmed && `${r.unconfirmed} left out because the search couldn't confirm them`, r.duplicates && `${r.duplicates} you already have`].filter(Boolean).join("; ");
+      setFound({
+        busy: false, items: r.candidates, steps: r.steps,
+        err: r.candidates.length ? "" : "The search didn't turn up organizations it could back with a source. Try describing them differently, or a wider region.",
+        note: `Searched the web ${r.steps.filter((s) => s.kind === "search").length} times and read ${r.pages} pages${left ? ` (${left})` : ""}.`,
+      });
+    } catch (e) {
+      const [msg, off] = aiErr(e);
+      if (off) setAiOff(true);
+      setFound({ busy: false, err: e && e.code === "cancelled" ? "" : msg, items: [], steps: [], note: "" });
+    }
+  }
+
+  /* Open a found organization in the preview, where it can be reviewed and saved */
+  function onReviewFound(c) {
+    openPreview({
+      org: { name: c.name, website: c.website, region: c.region, sector: c.sector, size: c.size, summary: c.summary, signals: [], jobs: c.jobs },
+      analysis: c.analysis,
+      by: "ai",
+    });
+  }
 
   async function runSuggest(query, region) {
     if (!aiOn) return;
@@ -262,7 +295,49 @@ export default function DiscoverView() {
         </div>
 
         <aside className="ai">
-          {aiOn ? (
+          {aiOn && server.web ? (
+          <div className="panel">
+            <div>
+              <h2>Find organizations</h2>
+              <p className="note">Describe who you&apos;re looking for. An AI agent searches the web for real organizations, and each one links to the page it was found on. It skips ones you&apos;ve already saved.</p>
+            </div>
+            <label className="f">Looking for
+              <textarea id="sq" rows={3} value={form.sq} onChange={setField("sq")} placeholder="e.g. Large employers with high turnover in frontline roles" />
+            </label>
+            <label className="f">Region
+              <input type="text" id="sr" value={form.sr} onChange={setField("sr")} placeholder="e.g. Calgary" />
+            </label>
+            <div className="row">
+              <button className="btn primary" onClick={runFind} disabled={found.busy || !form.sq.trim()}>Search the web</button>
+            </div>
+            {found.busy ? (
+              <p className="status-line"><span className="dots">Searching the web, step by step. Up to a minute</span><button className="btn ghost small" onClick={() => sugCtl.current && sugCtl.current.abort()}>Stop</button></p>
+            ) : null}
+            {found.err ? <p className="status-line err">{found.err}</p> : null}
+            {found.note && !found.busy ? <p className="note">{found.note}</p> : null}
+            {found.items.length ? (
+              <div className="sugg">
+                {found.items.map((c, i) => {
+                  const f = fitOf({ fit: c.analysis.fit });
+                  return (
+                    <div key={i} className="sugg-item">
+                      <span className="found-tag">Found on the web</span>
+                      <b>{c.name}</b>
+                      <span className="note">{[c.sector, c.region].filter(Boolean).join(" · ")}{c.website ? <> · <a href={c.website} target="_blank" rel="noopener noreferrer">website</a></> : null}</span>
+                      <div className="fitline"><FitPill f={f} /><span>{f.yes.length} of {CRIT.length} criteria</span></div>
+                      <span>{c.summary}</span>
+                      <ul className="list found-ev">
+                        {c.analysis.evidence.slice(0, 2).map((e, k) => <li key={k} className="ev"><div className="txt">{e.text}<Source source={e.source} /></div></li>)}
+                      </ul>
+                      {c.jobs ? <span className="hire">Job postings, last 60 days: {c.jobs.count}{c.jobs.more ? "+" : ""} ({c.jobs.peopleRoles} HR or training)</span> : null}
+                      <div><button className="btn small" onClick={() => onReviewFound(c)}>Review and save</button></div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+          ) : aiOn ? (
           <div className="panel">
             <div>
               <h2>Suggest organizations</h2>

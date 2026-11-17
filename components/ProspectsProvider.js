@@ -24,7 +24,7 @@ export default function ProspectsProvider({ children }) {
   const ref = useRef({});
   const [mode, setMode] = useState("loading"); // loading | cloud | local | memory
   const [catalog, setCatalog] = useState(CATALOG);
-  const [server, setServer] = useState({ ai: false, jobs: false });
+  const [server, setServer] = useState({ ai: false, jobs: false, web: false });
   const [aiOff, setAiOff] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -37,7 +37,7 @@ export default function ProspectsProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    fetchStatus().then((s) => setServer({ ai: !!s.ai, jobs: !!s.jobs })).catch(() => {});
+    fetchStatus().then((s) => setServer({ ai: !!s.ai, jobs: !!s.jobs, web: !!s.web })).catch(() => {});
     return () => clearTimeout(timer.current);
   }, []);
 

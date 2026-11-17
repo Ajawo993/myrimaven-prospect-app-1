@@ -345,3 +345,9 @@ details.addorg[open] > summary{margin-bottom:4px}
 .research h4{margin:0 0 4px}
 .research ol.research-steps{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:3px; font-size:.9rem; list-style:decimal}
 .research .ev small a, .analysis .ev small a{color:var(--accent); text-decoration:underline}
+
+/* finder agent results on Discover */
+.found-tag{align-self:flex-start; font-size:.72rem; font-weight:600; letter-spacing:.02em; color:var(--accent); background:var(--accent-soft); border-radius:999px; padding:2px 8px}
+.sugg-item .found-ev{margin:0}
+.sugg-item .found-ev .txt{font-size:.88rem}
+.sugg-item .found-ev small a, .sugg-item .note a{color:var(--accent); text-decoration:underline}
