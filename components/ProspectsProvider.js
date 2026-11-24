@@ -6,7 +6,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { loadProspects, saveProspect, deleteProspect, loadOrganizations, resetWorkspace, loadSampleData, removeSampleData } from "@/lib/storage";
-import { fetchStatus } from "@/lib/api";
+import { fetchStatus, getUpdates, calendarSync } from "@/lib/api";
 import { buildExamples, upgrade } from "@/lib/prospect";
 import { CATALOG } from "@/lib/catalog";
 import { useAuth } from "./AuthProvider";
@@ -24,7 +24,9 @@ export default function ProspectsProvider({ children }) {
   const ref = useRef({});
   const [mode, setMode] = useState("loading"); // loading | cloud | local | memory
   const [catalog, setCatalog] = useState(CATALOG);
-  const [server, setServer] = useState({ ai: false, jobs: false, web: false });
+  const [server, setServer] = useState({ ai: false, jobs: false, web: false, email: false, calendar: false });
+  const [calendarOn, setCalendarOn] = useState(false);
+  const calTimer = useRef(null);
   const [aiOff, setAiOff] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -37,8 +39,8 @@ export default function ProspectsProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    fetchStatus().then((s) => setServer({ ai: !!s.ai, jobs: !!s.jobs, web: !!s.web })).catch(() => {});
-    return () => clearTimeout(timer.current);
+    fetchStatus().then((s) => setServer({ ai: !!s.ai, jobs: !!s.jobs, web: !!s.web, email: !!s.email, calendar: !!s.calendar })).catch(() => {});
+    return () => { clearTimeout(timer.current); clearTimeout(calTimer.current); };
   }, []);
 
   /* Load (again) whenever who's signed in changes */
@@ -74,20 +76,43 @@ export default function ProspectsProvider({ children }) {
     return () => { alive = false; };
   }, [status, userId, toast, reloadKey]);
 
+  /* Is Google Calendar connected? Checked once after sign-in, so date changes can be synced */
+  useEffect(() => {
+    if (status !== "signedIn" || !server.calendar) { setCalendarOn(false); return; }
+    getUpdates().then((r) => setCalendarOn(!!(r.settings && r.settings.calendar.connected))).catch(() => {});
+  }, [status, userId, server.calendar]);
+
+  /* A few seconds after the last change to a follow-up, bring the calendar up to date (one call for many edits) */
+  const syncSoon = useCallback(() => {
+    clearTimeout(calTimer.current);
+    calTimer.current = setTimeout(() => {
+      calendarSync().catch((e) => {
+        if (e && e.code === "calendar_expired") { setCalendarOn(false); toast("Google Calendar access expired. Reconnect it in Updates & calendar."); }
+      });
+    }, 4000);
+  }, [toast]);
+
   const save = useCallback((p) => {
+    const prev = ref.current[p.id];
     const next = { ...p, updatedAt: Date.now() };
     ref.current = { ...ref.current, [next.id]: next };
     setProspects(ref.current);
-    saveProspect(next).catch(() => toast("Couldn't save that change. Check your connection and try again."));
+    const onCalendar = (x) => x ? [x.followUpDate, x.name, x.nextAction, x.status].join("|") : "";
+    const calChanged = calendarOn && mode === "cloud" && (next.followUpDate || (prev && prev.followUpDate)) && onCalendar(prev) !== onCalendar(next);
+    saveProspect(next)
+      .then(() => { if (calChanged) syncSoon(); })
+      .catch(() => toast("Couldn't save that change. Check your connection and try again."));
     return next;
-  }, [toast]);
+  }, [toast, calendarOn, mode, syncSoon]);
 
   const remove = useCallback((id) => {
-    const { [id]: _gone, ...rest } = ref.current;
+    const { [id]: gone, ...rest } = ref.current;
     ref.current = rest;
     setProspects(rest);
-    deleteProspect(id).catch(() => toast("Couldn't remove that prospect. Check your connection and try again."));
-  }, [toast]);
+    deleteProspect(id)
+      .then(() => { if (calendarOn && mode === "cloud" && gone && gone.followUpDate) syncSoon(); })
+      .catch(() => toast("Couldn't remove that prospect. Check your connection and try again."));
+  }, [toast, calendarOn, mode, syncSoon]);
 
   const clearAll = useCallback(() => {
     Object.keys(ref.current).forEach((id) => deleteProspect(id).catch(() => {}));
@@ -153,6 +178,8 @@ export default function ProspectsProvider({ children }) {
     catalog,
     server,
     aiOn: !aiOff && server.ai,
+    calendarOn,
+    setCalendarOn,
     setAiOff,
     save,
     remove,
@@ -163,7 +190,7 @@ export default function ProspectsProvider({ children }) {
     addSample,
     removeSample,
     toast,
-  }), [prospects, mode, catalog, server, aiOff, save, remove, clearAll, get, loadExamples, resetSample, addSample, removeSample, toast]);
+  }), [prospects, mode, catalog, server, aiOff, calendarOn, save, remove, clearAll, get, loadExamples, resetSample, addSample, removeSample, toast]);
 
   return (
     <ProspectsContext.Provider value={value}>

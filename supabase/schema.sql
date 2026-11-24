@@ -305,3 +305,21 @@ create policy "Users log their own usage" on public.api_usage
 
 -- no update or delete policy: nobody can edit or erase their usage from the app
 grant select, insert on public.api_usage to authenticated;
+
+-- ---------- daily update email + Google Calendar (same as supabase/updates.sql) ----------
+create table if not exists public.user_settings (
+  user_id               uuid primary key references auth.users (id) on delete cascade,
+  daily_email           boolean not null default false,
+  email                 text,
+  time_zone             text not null default 'America/Edmonton',
+  last_digest_on        date,
+  google_refresh_token  text,
+  google_email          text,
+  calendar_synced       jsonb not null default '{}'::jsonb,
+  calendar_error        text,
+  updated_at            timestamptz not null default now()
+);
+
+alter table public.user_settings enable row level security;
+
+revoke all on public.user_settings from anon, authenticated;

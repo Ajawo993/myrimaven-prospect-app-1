@@ -13,6 +13,7 @@ It started as a class project for an early-stage career exploration company ("th
 | `/prospects/[id]` | Profile: fit rating, assessment, evidence, hiring activity, contacts, outreach log, next step | Workflow 2: Qualify; Workflow 3: Contact and learn |
 | `/learnings` | Not-a-fit reasons, warm vs. cold, responses by sector, lessons | Workflow 3: learning from outreach |
 | `/login` | Sign in with Google or with email and password; create an account; email a sign-in link | Access to the client's prospect data |
+| `/settings` | Updates & calendar: daily update email on/off, send one now, connect Google Calendar | Follow-up actions |
 | `/api/analyze`, `/api/suggest`, `/api/jobs`, `/api/status` | Server routes for AI analysis and job postings | "Why is this a prospect?" analysis, hiring activity |
 
 ## Features
@@ -164,6 +165,16 @@ Every row carries the owner's `user_id`, and row-level security means each signe
 5. Check **Table Editor** (schema: **public**): six tables plus `starter_prospects`, with 60 rows in `organizations`.
 
 All three scripts are safe to run again. After signing in, the Prospects page offers to copy any prospects saved in that browser into the account.
+
+## Daily update email and Google Calendar
+
+Account menu → **Updates & calendar** (`/settings`).
+
+- **Daily update (agent):** once a day Vercel Cron calls `/api/cron/daily` (`vercel.json`, 14:00 UTC ≈ 7 a.m. Mountain). For each person who turned it on, rules pick what's overdue, due today, due this week and active without a date; Claude writes a two-line summary and a first-draft message per due follow-up; Resend emails it **to that person only**. Prospect Desk never emails prospects. If the AI fails, the plain list still goes out. Empty days are skipped. "Send me one now" sends straight away (counts against the AI limit).
+- **Google Calendar:** "Connect Google Calendar" runs Google's OAuth (`/api/calendar/start` → Google → `/api/calendar/callback`). Each follow-up date becomes an all-day event with the next step and a link back. Changing or clearing a date updates or removes the event a few seconds later; the daily run catches anything missed. Disconnect removes the events and revokes access.
+- **Data:** `supabase/updates.sql` creates `user_settings` (RLS on, no policies: only the server reads it, because it holds the Google refresh token). Server code is in `lib/updates.js`.
+- **Vercel env vars:** `SUPABASE_SECRET_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (optional: `DIGEST_FROM`, `APP_URL`).
+- **Limits:** without a verified domain Resend only delivers to the email on the Resend account. Hobby cron runs once a day (within the hour). While the Google consent screen is in Testing, only listed test users can connect and access lasts 7 days.
 
 ## Sample data
 

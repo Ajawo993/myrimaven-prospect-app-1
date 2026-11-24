@@ -51,6 +51,14 @@ function AccountMenu({ user, mode, onSignOut }) {
           </div>
           <ThemeToggle variant="menu" />
           {user ? (
+            <Link role="menuitem" className="menu-item" href="/settings">
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" />
+              </svg>
+              <span>Updates &amp; calendar</span>
+            </Link>
+          ) : null}
+          {user ? (
             <button type="button" role="menuitem" className="menu-item" onClick={onSignOut}>
               <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
