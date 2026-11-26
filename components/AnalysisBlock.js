@@ -6,6 +6,7 @@
 const LABEL = {
   ai: "AI assessment. Use the evidence and unknowns to make your own call.",
   sample: "Prepared assessment for a sample organization.",
+  agent: "Found by the weekly discovery agent. Every piece of evidence links to the page it came from: check them before you rely on it.",
   none: "No assessment yet. Add evidence and unknowns as you find them.",
 };
 const needsVerify = (source) => /verify|general knowledge|^ai$/i.test(source || "");

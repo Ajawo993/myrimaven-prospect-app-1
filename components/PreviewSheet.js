@@ -36,10 +36,13 @@ export default function PreviewSheet({ preview, savedId, onSave, onClose, onLeav
             <p className="eyebrow">Why might this organization need your company?</p>
             <h2 style={{ marginTop: 4 }}>{org.name}</h2>
             <p className="note" style={{ marginTop: 4 }}>{[org.sector, org.size, org.region].filter(Boolean).join(" · ")}</p>
+            {org.agent && /^https?:\/\//.test(org.website || "") ? (
+              <p className="note" style={{ marginTop: 2 }}><a href={org.website} target="_blank" rel="noopener noreferrer">{org.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</a></p>
+            ) : null}
           </div>
           <button className="btn ghost" onClick={onClose} aria-label="Close">Close</button>
         </div>
-        {org.summary && by !== "ai" ? <p>{org.summary}</p> : null}
+        {org.summary && by !== "ai" && by !== "agent" ? <p>{org.summary}</p> : null}
         {(org.signals || []).length || org.hiring ? (
           <div className="sheet-facts">
             {(org.signals || []).length ? <div className="tags">{org.signals.map((s) => <span key={s} className="tag">{SIGNALS[s] || s}</span>)}</div> : null}

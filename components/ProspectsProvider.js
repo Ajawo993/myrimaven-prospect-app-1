@@ -5,7 +5,7 @@
    Signed in: prospects come from Supabase. Sign-in not set up: from this browser. */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { loadProspects, saveProspect, deleteProspect, loadOrganizations, resetWorkspace, loadSampleData, removeSampleData } from "@/lib/storage";
+import { loadProspects, saveProspect, deleteProspect, loadOrganizations, loadLastDiscovery, resetWorkspace, loadSampleData, removeSampleData } from "@/lib/storage";
 import { fetchStatus, getUpdates, calendarSync } from "@/lib/api";
 import { buildExamples, upgrade } from "@/lib/prospect";
 import { CATALOG } from "@/lib/catalog";
@@ -24,6 +24,7 @@ export default function ProspectsProvider({ children }) {
   const ref = useRef({});
   const [mode, setMode] = useState("loading"); // loading | cloud | local | memory
   const [catalog, setCatalog] = useState(CATALOG);
+  const [discovery, setDiscovery] = useState(null); // latest weekly agent run
   const [server, setServer] = useState({ ai: false, jobs: false, web: false, email: false, calendar: false });
   const [calendarOn, setCalendarOn] = useState(false);
   const calTimer = useRef(null);
@@ -66,6 +67,7 @@ export default function ProspectsProvider({ children }) {
         apply(res);
         if (res.mode === "cloud") {
           loadOrganizations().then((orgs) => { if (alive && orgs) setCatalog(orgs); }).catch(() => {});
+          loadLastDiscovery().then((r) => { if (alive) setDiscovery(r); }).catch(() => {});
         }
       })
       .catch(() => {
@@ -176,6 +178,7 @@ export default function ProspectsProvider({ children }) {
     list: Object.values(prospects),
     mode,
     catalog,
+    discovery,
     server,
     aiOn: !aiOff && server.ai,
     calendarOn,
@@ -190,7 +193,7 @@ export default function ProspectsProvider({ children }) {
     addSample,
     removeSample,
     toast,
-  }), [prospects, mode, catalog, server, aiOff, calendarOn, save, remove, clearAll, get, loadExamples, resetSample, addSample, removeSample, toast]);
+  }), [prospects, mode, catalog, discovery, server, aiOff, calendarOn, save, remove, clearAll, get, loadExamples, resetSample, addSample, removeSample, toast]);
 
   return (
     <ProspectsContext.Provider value={value}>

@@ -21,12 +21,13 @@ const orgInUrl = () => new URLSearchParams(window.location.search).get("org");
 
 export default function DiscoverView() {
   const router = useRouter();
-  const { list, catalog, server, aiOn, setAiOff, save, toast } = useProspects();
+  const { list, catalog, discovery, server, aiOn, setAiOff, save, toast } = useProspects();
 
   const [q, setQ] = useState("");
   const [signal, setSignal] = useState("all");
   const [rating, setRating] = useState("all");
   const [showOutside, setShowOutside] = useState(false);
+  const [source, setSource] = useState("all"); // all | agent (real, found by the weekly agent) | sample
   const [form, setForm] = useState({ sq: "", sr: "", an: "", aw: "", ar: "", ax: "" });
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const [preview, setPreview] = useState(null);
@@ -45,7 +46,7 @@ export default function DiscoverView() {
   catalogRef.current = catalog;
   const fromCatalog = (key) => {
     const c = catalogRef.current.find((x) => x.key === key);
-    return c ? { org: c, analysis: c.analysis, by: "sample" } : null;
+    return c ? { org: c, analysis: c.analysis, by: c.agent ? "agent" : "sample" } : null;
   };
 
   function openPreview(p) {
@@ -102,13 +103,17 @@ export default function DiscoverView() {
       .map((c) => ({ c, f: fitOf({ fit: decodeFit(c.fit), contacts: [] }) }))
       .filter(({ c, f }) =>
         (showOutside || !c.outside) &&
+        (source === "all" || (source === "agent") === !!c.agent) &&
         (signal === "all" || c.signals.includes(signal)) &&
         (rating === "all" || f.rating === rating) &&
         (!term || [c.name, c.sector, c.region, c.summary].join(" ").toLowerCase().includes(term)))
       .sort((a, b) => RANK[a.f.rating] - RANK[b.f.rating] || b.f.yes.length - a.f.yes.length || a.f.no.length - b.f.no.length);
-  }, [catalog, q, signal, rating, showOutside]);
+  }, [catalog, q, signal, rating, showOutside, source]);
 
   const outsideCount = catalog.filter((c) => c.outside).length;
+  const realCount = catalog.filter((c) => c.agent).length;
+  const isNew = (c) => c.agent && c.foundAt && Date.now() - Date.parse(c.foundAt) < 7 * 24 * 3600 * 1000;
+  const fmtDay = (d) => new Date(d).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 
   async function runFind() {
     if (!aiOn) return;
@@ -257,6 +262,15 @@ export default function DiscoverView() {
                 {[["all", "All signals"], ...Object.entries(SIGNALS)].map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </select>
             </label>
+            {realCount ? (
+              <label className="f">Source
+                <select id="source" value={source} onChange={(e) => setSource(e.target.value)}>
+                  <option value="all">All organizations</option>
+                  <option value="agent">Real, found by agent ({realCount})</option>
+                  <option value="sample">Samples ({catalog.length - realCount})</option>
+                </select>
+              </label>
+            ) : null}
             <label className="f">Focus
               <select id="showOutside" value={showOutside ? "all" : "focus"} onChange={(e) => setShowOutside(e.target.value === "all")}>
                 <option value="focus">Current focus</option>
@@ -275,7 +289,7 @@ export default function DiscoverView() {
                 <div>
                   <div className="org-top">
                     <h3>{c.name}</h3>
-                    {findSaved(c) ? <span className="saved">Saved</span> : null}
+                    {findSaved(c) ? <span className="saved">Saved</span> : isNew(c) ? <span className="tag new">New</span> : null}
                   </div>
                   <p className="sub">{[c.sector, c.region].filter(Boolean).join(" · ")}</p>
                 </div>
@@ -283,15 +297,21 @@ export default function DiscoverView() {
                   <FitPill f={f} />
                   <span>{f.yes.length} of {CRIT.length} criteria</span>
                   {c.outside ? <span className="tag out">Outside focus</span> : null}
+                  {c.agent ? <span className="tag real" title={c.foundAt ? `Found ${fmtDay(c.foundAt)}` : ""}>Real</span> : null}
                 </div>
                 <p className="sum">{c.summary}</p>
                 <div className="foot">
-                  <button className="btn small" onClick={() => openPreview({ org: c, analysis: c.analysis, by: "sample" })}>Why is this a prospect?</button>
+                  <button className="btn small" onClick={() => openPreview({ org: c, analysis: c.analysis, by: c.agent ? "agent" : "sample" })}>Why is this a prospect?</button>
                 </div>
               </article>
-            )) : <p className="note">No sample organizations match. Clear the search or change a filter.</p>}
+            )) : <p className="note">No organizations match. Clear the search or change a filter.</p>}
           </div>
-          <p className="note">Sample organizations are fictional, for practice and demos.</p>
+          <p className="note">
+            Organizations marked Real were found on the web by the weekly discovery agent, with links to its evidence. The rest are fictional samples for practice and demos.
+            {discovery ? (discovery.status === "ok"
+              ? ` Last updated ${fmtDay(discovery.ran_at)}: ${discovery.added} added.`
+              : ` The last weekly search (${fmtDay(discovery.ran_at)}) didn't finish, so nothing new was added; it tries again the next day.`) : ""}
+          </p>
         </div>
 
         <aside className="ai">

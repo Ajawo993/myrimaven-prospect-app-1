@@ -355,3 +355,7 @@ details.addorg[open] > summary{margin-bottom:4px}
 /* Updates & calendar */
 .switch-row{color:var(--ink); font-size:.92rem; align-items:flex-start}
 .switch-row input{margin-top:3px; width:16px; height:16px; accent-color:var(--accent)}
+
+/* Discover: organizations found by the weekly agent */
+.tag.real{background:var(--ok-soft); color:var(--ok)}
+.tag.new{background:var(--accent); color:var(--accent-ink)}
